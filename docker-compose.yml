@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tractor-supply-db
+    environment:
+      POSTGRES_USER: supply
+      POSTGRES_PASSWORD: supply
+      POSTGRES_DB: supply
+    ports:
+      - "5433:5432"
+    volumes:
+      - tractor-supply-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supply -d supply"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  tractor-supply-pg:
