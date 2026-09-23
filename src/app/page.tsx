@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 function briefSections(body: string) {
   const heads = ["Demand", "Suppliers", "Failures", "Inventory"];
   const out: { head: string; text: string }[] = [];
-  for (const para of body.split(/\n\s*\n/)) {
+  for (const para of body.split(/\n+/).filter((l) => l.trim())) {
     const m = para.match(/^\s*\**\s*(Demand|Suppliers|Failures|Inventory)\s*\**\s*:\s*\**\s*/i);
     if (m) out.push({ head: heads.find((h) => h.toLowerCase() === m[1].toLowerCase())!, text: para.slice(m[0].length).trim() });
     else if (out.length) out[out.length - 1].text += `\n${para.trim()}`;

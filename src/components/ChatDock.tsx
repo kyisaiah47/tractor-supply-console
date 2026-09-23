@@ -107,7 +107,8 @@ export function ChatDock(props: { minimized: boolean; onToggle: () => void }) {
         }
       }
     } catch (e) {
-      update((m) => ({ ...m, error: e instanceof Error ? e.message : String(e) }));
+      console.error(e);
+      update((m) => ({ ...m, error: "The assistant could not be reached. Try again in a moment." }));
     } finally {
       setBusy(false);
     }
@@ -269,7 +270,7 @@ export function ChatDock(props: { minimized: boolean; onToggle: () => void }) {
                   <i />
                 </span>
               )}
-              {m.error && <p className="ink-short">Error: {m.error}</p>}
+              {m.error && <p className="ink-short">{m.error}</p>}
             </div>
           ),
         )}

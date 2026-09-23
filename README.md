@@ -4,6 +4,8 @@ A working prototype of the supply chain application designed in the Kontakt.io s
 
 ![Orders console](docs/screenshots/orders.png)
 
+**Demo video (3 minutes):** [docs/demo.mp4](docs/demo.mp4). It walks through the orders pipeline, ordering parts for selected orders, the weekly brief, the planning assistant drafting an order, each model, the supply order queue and recording a new order.
+
 ## Run it locally
 
 You need Node 20 or newer and Docker.
@@ -24,7 +26,7 @@ The planning assistant works without an API key. With no key it answers by keywo
 
 | Provider | Setting | Notes |
 |---|---|---|
-| Google Gemini | `GEMINI_API_KEY` | Free tier at https://aistudio.google.com/apikey. Default model `gemini-2.5-flash`. |
+| Google Gemini | `GEMINI_API_KEY` | Free tier at https://aistudio.google.com/apikey. Default model `gemini-flash-latest`. The free tier allows about 20 requests per model per day, and each question takes two or three. On a 429 the app moves to the next model in `GEMINI_FALLBACK_MODELS`. When every model is out, the assistant answers in keyword mode and says so. |
 | Anthropic Claude | `ANTHROPIC_API_KEY` | Default model `claude-opus-5`. |
 
 `LLM_PROVIDER` forces one of `gemini`, `anthropic` or `offline`.
