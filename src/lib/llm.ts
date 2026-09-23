@@ -1,7 +1,7 @@
 // One-shot text completion for the weekly brief. The chatbot's tool loop is in agent/run.ts.
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import { llmConfig } from "./config";
+import { geminiModels, llmConfig } from "./config";
 
 export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/";
 
@@ -23,15 +23,24 @@ export async function completeText(system: string, prompt: string): Promise<{ te
     return { text, author: `llm:anthropic/${model}` };
   }
   if (provider === "gemini") {
-    const client = new OpenAI({ apiKey: process.env.GEMINI_API_KEY, baseURL: GEMINI_BASE_URL });
-    const res = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: prompt },
-      ],
-    });
-    return { text: res.choices[0]?.message?.content ?? "", author: `llm:gemini/${model}` };
+    const client = new OpenAI({ apiKey: process.env.GEMINI_API_KEY, baseURL: GEMINI_BASE_URL, maxRetries: 1 });
+    let lastError: unknown;
+    for (const m of geminiModels()) {
+      try {
+        const res = await client.chat.completions.create({
+          model: m,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: prompt },
+          ],
+        });
+        return { text: res.choices[0]?.message?.content ?? "", author: `llm:gemini/${m}` };
+      } catch (e) {
+        lastError = e;
+        if (!(e instanceof OpenAI.RateLimitError)) throw e;
+      }
+    }
+    throw lastError;
   }
   return null;
 }

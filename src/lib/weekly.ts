@@ -84,11 +84,51 @@ export function templateBrief(f: BriefFacts) {
   return lines.join("\n\n");
 }
 
+// What the LLM sees: every figure already formatted, every field named for what it means.
+function llmFacts(f: BriefFacts) {
+  const n = (x: number) => Math.round(x).toLocaleString("en-US");
+  return {
+    period: f.horizon,
+    demand: {
+      tractorsForecast: n(f.demand.forecast12),
+      tractorsAlreadyBooked: n(f.demand.booked12),
+      forecastAverageMissOnTheLastTwoYears: pct(f.demand.backtestMape),
+    },
+    suppliers: {
+      slowest: { name: f.suppliers.slowest.supplier, averageDaysLate: f.suppliers.slowest.meanDelay, daysLateInQ4: f.suppliers.slowest.byQuarter[3] },
+      fastest: { name: f.suppliers.fastest.supplier, averageDaysLate: f.suppliers.fastest.meanDelay },
+      openSupplyOrders: f.suppliers.openTotal,
+      openSupplyOrdersLikelyToArriveAfterThePartRunsOut: f.suppliers.openAtRisk,
+    },
+    failures: {
+      partsFailingAboveTheMarketRate: f.failures.elevated.map((e) => ({
+        part: `${e.category} ${e.sku}`,
+        supplier: e.supplier,
+        failureRate: pct(e.rate),
+        marketRate: pct(e.prior),
+      })),
+      partsExpectedToBreakInTheNextThreeMonthsOfBuilds: n(f.failures.expectedBrokenInPipeline),
+    },
+    inventory: {
+      partsToOrderNow: f.inventory.toOrder,
+      totalCostOfThoseOrders: usd(f.inventory.spend),
+      partsWithExcessStock: f.inventory.excess,
+      mostUrgent: f.inventory.mostUrgent.map((u) => ({
+        part: u.sku,
+        daysOfStockLeft: u.daysOfCover,
+        orderQuantity: u.quantity,
+        supplier: u.supplier,
+      })),
+    },
+  };
+}
+
 const BRIEF_SYSTEM = `You write the weekly supply-chain brief for a tractor manufacturer's planning team.
-Use only the numbers in the JSON facts. Never invent a number. Never name a database table, field, model id or statistical method; write for a supply planner.
-Write four short paragraphs headed Demand, Suppliers, Failures, Inventory, each starting with its heading and a colon.
-One fact per sentence. Plain sentences, no metaphors, no filler, no bullet points.
-End the Inventory paragraph with the single most urgent action.`;
+Use only the facts in the JSON. Copy every number exactly as written, with its % or $ sign. Never invent a number.
+Never name a database table, field, model id or statistical method. Write for a supply planner.
+Write four paragraphs headed Demand, Suppliers, Failures, Inventory, each starting with its heading and a colon.
+Each paragraph has at most three sentences. One fact per sentence. Plain sentences, no metaphors, no filler, no bullet points.
+End the Inventory paragraph with the single most urgent action: which part to order, how many, and from which supplier.`;
 
 export async function runWeeklyJob(opts: { useLlm: boolean; asOf?: string } = { useLlm: true }) {
   const asOf = opts.asOf ?? AS_OF;
@@ -99,10 +139,12 @@ export async function runWeeklyJob(opts: { useLlm: boolean; asOf?: string } = { 
   let author = "template";
   if (opts.useLlm) {
     try {
-      const out = await completeText(BRIEF_SYSTEM, JSON.stringify(facts, null, 2));
+      const out = await completeText(BRIEF_SYSTEM, JSON.stringify(llmFacts(facts), null, 2));
       if (out?.text.trim()) {
         body = out.text.trim();
         author = out.author;
+      } else if (out) {
+        console.error(`weekly brief: ${out.author} returned no text, kept the template brief`);
       }
     } catch (e) {
       console.error("weekly brief: LLM call failed, kept the template brief", e);

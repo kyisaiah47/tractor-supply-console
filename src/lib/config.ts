@@ -17,6 +17,16 @@ export const APP_URL = process.env.APP_URL || "http://localhost:3000";
 
 export type LlmProvider = "anthropic" | "gemini" | "offline";
 
+// Each free Gemini model has its own daily request cap. On a 429 the app moves to the next one.
+export function geminiModels(): string[] {
+  const first = process.env.GEMINI_MODEL || "gemini-flash-latest";
+  const rest = (process.env.GEMINI_FALLBACK_MODELS || "gemini-3-flash-preview,gemini-3.1-flash-lite")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+  return [first, ...rest.filter((m) => m !== first)];
+}
+
 export function llmConfig(): { provider: LlmProvider; model: string } {
   const forced = (process.env.LLM_PROVIDER || "").trim() as LlmProvider | "";
   const provider: LlmProvider =
@@ -31,7 +41,7 @@ export function llmConfig(): { provider: LlmProvider; model: string } {
     provider === "anthropic"
       ? process.env.ANTHROPIC_MODEL || "claude-opus-5"
       : provider === "gemini"
-        ? process.env.GEMINI_MODEL || "gemini-2.5-flash"
+        ? process.env.GEMINI_MODEL || "gemini-flash-latest"
         : "rules";
   return { provider, model };
 }

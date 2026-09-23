@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -k -n web,worker -c cyan,magenta \"next dev\" \"tsx watch scripts/worker.ts\"",
+    "dev": "concurrently -n web,worker -c cyan,magenta --kill-others-on-fail \"next dev\" \"tsx scripts/worker.ts\"",
     "dev:web": "next dev",
     "build": "next build",
-    "start": "concurrently -k -n web,worker \"next start\" \"tsx scripts/worker.ts\"",
+    "start": "concurrently -n web,worker --kill-others-on-fail \"next start\" \"tsx scripts/worker.ts\"",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "db:up": "docker compose up -d --wait",

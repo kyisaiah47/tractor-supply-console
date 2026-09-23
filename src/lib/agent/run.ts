@@ -3,7 +3,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import { AS_OF, llmConfig } from "../config";
+import { AS_OF, geminiModels, llmConfig } from "../config";
 import { GEMINI_BASE_URL } from "../llm";
 import { TOOLS, executeTool } from "./tools";
 import { runOffline } from "./offline";
@@ -17,7 +17,7 @@ export type AgentEvent =
   | { type: "done" }
   | { type: "error"; message: string };
 
-const MAX_ROUNDS = 6;
+const MAX_ROUNDS = 10; // the last round is answered without tools, so a reply always arrives
 
 export const SYSTEM_PROMPT = `You are the planning assistant inside a supply chain console for a tractor manufacturer that builds five models, TX-100 to TX-500, from parts bought from Supplier A to Supplier E and stocked in five warehouses (CA, FL, IL, NY, TX).
 
@@ -27,6 +27,7 @@ How to answer:
 - Get every number from a tool. Never estimate or invent a figure. If no tool has it, say so.
 - The reader is a supply planner, not a developer. Never name a database table, a field, a tool or function, an API or a statistical method. Say "the demand forecast", "the supplier delay forecast", "market data", "order history".
 - Keep answers short: one fact per sentence, plain words. Use a small markdown table when comparing more than three rows.
+- Call each tool once with the widest filter you need. get_supplier_delays with no supplier returns every supplier at once.
 - When the user asks you to draft, order, buy or reorder anything, call propose_supply_order in the same turn with the quantities and suppliers from get_inventory_recommendations. It only drafts: the user must press Confirm. Never say an order was placed.
 - Market data on its own predicts little: market demand does not move with the trend index or inflation, and every supplier averages about the same delay there. The forecasts rely on the company's own order and supply history. Say this if asked why a forecast uses one input and not another.`;
 
@@ -35,13 +36,30 @@ type Emit = (e: AgentEvent) => void;
 export async function runAgent(history: ChatTurn[], emit: Emit) {
   const { provider, model } = llmConfig();
   emit({ type: "meta", provider, model });
+  let wroteText = false;
+  const tracked: Emit = (e) => {
+    if (e.type === "text") wroteText = true;
+    emit(e);
+  };
   try {
-    if (provider === "anthropic") await runAnthropic(history, model, emit);
-    else if (provider === "gemini") await runGemini(history, model, emit);
-    else await runOffline(history, emit);
+    if (provider === "anthropic") await runAnthropic(history, model, tracked);
+    else if (provider === "gemini") await runGemini(history, model, tracked);
+    else await runOffline(history, tracked);
     emit({ type: "done" });
   } catch (e) {
-    emit({ type: "error", message: e instanceof Error ? e.message : String(e) });
+    console.error(`[chat] ${provider}/${model} failed:`, e instanceof Error ? e.message : e);
+    // A rate limit or outage before any answer: answer from the console's own lookups instead.
+    if (!wroteText && provider !== "offline") {
+      try {
+        emit({ type: "text", text: "The language model is busy right now, so this answer comes straight from the console's data.\n\n" });
+        await runOffline(history, emit);
+        emit({ type: "done" });
+        return;
+      } catch {
+        // fall through to the plain error
+      }
+    }
+    emit({ type: "error", message: "The assistant could not finish that answer. Try again in a moment." });
   }
 }
 
@@ -56,11 +74,13 @@ async function runAnthropic(history: ChatTurn[], model: string, emit: Emit) {
   const messages: Anthropic.Beta.BetaMessageParam[] = history.map((h) => ({ role: h.role, content: h.content }));
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
+    const last = round === MAX_ROUNDS - 1;
     const stream = client.beta.messages.stream({
       model,
       max_tokens: 16000,
       system: SYSTEM_PROMPT,
       tools,
+      ...(last ? { tool_choice: { type: "none" as const } } : {}),
       messages,
       output_config: { effort: "medium" },
       betas: ["server-side-fallback-2026-07-01"],
@@ -95,8 +115,10 @@ async function runAnthropic(history: ChatTurn[], model: string, emit: Emit) {
   }
 }
 
-async function runGemini(history: ChatTurn[], model: string, emit: Emit) {
-  const client = new OpenAI({ apiKey: process.env.GEMINI_API_KEY, baseURL: GEMINI_BASE_URL });
+async function runGemini(history: ChatTurn[], _model: string, emit: Emit) {
+  const client = new OpenAI({ apiKey: process.env.GEMINI_API_KEY, baseURL: GEMINI_BASE_URL, maxRetries: 1 });
+  const models = geminiModels();
+  let mi = 0;
   const tools: OpenAI.Chat.ChatCompletionTool[] = TOOLS.map((t) => ({
     type: "function",
     function: { name: t.name, description: t.description, parameters: t.jsonSchema },
@@ -107,9 +129,30 @@ async function runGemini(history: ChatTurn[], model: string, emit: Emit) {
   ];
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
-    const stream = await client.chat.completions.create({ model, messages, tools, stream: true });
+    const last = round === MAX_ROUNDS - 1;
+    let stream;
+    for (;;) {
+      try {
+        stream = await client.chat.completions.create({
+          model: models[mi],
+          messages,
+          tools,
+          stream: true,
+          ...(last ? { tool_choice: "none" as const } : {}),
+        });
+        break;
+      } catch (e) {
+        if (e instanceof OpenAI.RateLimitError && mi < models.length - 1) {
+          console.warn(`[chat] ${models[mi]} is over its free quota, trying ${models[mi + 1]}`);
+          mi++;
+          continue;
+        }
+        throw e;
+      }
+    }
     let text = "";
-    const calls: { id: string; name: string; args: string }[] = [];
+    // Gemini 3 models return a thought signature on each tool call that must be sent back.
+    const calls: { id: string; name: string; args: string; extra?: unknown }[] = [];
     for await (const chunk of stream) {
       const d = chunk.choices[0]?.delta;
       if (!d) continue;
@@ -123,6 +166,8 @@ async function runGemini(history: ChatTurn[], model: string, emit: Emit) {
         if (tc.id) calls[i].id = tc.id;
         if (tc.function?.name) calls[i].name += tc.function.name;
         if (tc.function?.arguments) calls[i].args += tc.function.arguments;
+        const extra = (tc as { extra_content?: unknown }).extra_content;
+        if (extra) calls[i].extra = extra;
       }
     }
     const real = calls.filter(Boolean);
@@ -130,7 +175,12 @@ async function runGemini(history: ChatTurn[], model: string, emit: Emit) {
     messages.push({
       role: "assistant",
       content: text || null,
-      tool_calls: real.map((c) => ({ id: c.id, type: "function", function: { name: c.name, arguments: c.args || "{}" } })),
+      tool_calls: real.map((c) => ({
+        id: c.id,
+        type: "function" as const,
+        function: { name: c.name, arguments: c.args || "{}" },
+        ...(c.extra ? { extra_content: c.extra } : {}),
+      })),
     });
     for (const c of real) {
       let input: unknown = {};

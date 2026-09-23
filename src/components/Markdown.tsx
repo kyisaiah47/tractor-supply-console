@@ -1,17 +1,25 @@
-// A small markdown renderer for chat replies: paragraphs, lists, tables, **bold** and `code`.
+// A small markdown renderer for chat replies: paragraphs, lists, tables, **bold**, *italic* and `code`.
 // It builds React elements, never HTML strings, so model output cannot inject markup.
 import { Fragment, type ReactNode } from "react";
 
 function inline(text: string, key: string): ReactNode[] {
   const out: ReactNode[] = [];
-  const re = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  const re = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g;
   let last = 0;
   let m: RegExpExecArray | null;
   let i = 0;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
     const tok = m[0];
-    out.push(tok.startsWith("**") ? <b key={`${key}-${i++}`}>{tok.slice(2, -2)}</b> : <code key={`${key}-${i++}`}>{tok.slice(1, -1)}</code>);
+    out.push(
+      tok.startsWith("**") ? (
+        <b key={`${key}-${i++}`}>{tok.slice(2, -2)}</b>
+      ) : tok.startsWith("`") ? (
+        <code key={`${key}-${i++}`}>{tok.slice(1, -1)}</code>
+      ) : (
+        <em key={`${key}-${i++}`}>{tok.slice(1, -1)}</em>
+      ),
+    );
     last = m.index + tok.length;
   }
   if (last < text.length) out.push(text.slice(last));
@@ -78,7 +86,9 @@ export function Markdown({ text }: { text: string }) {
       );
       continue;
     }
-    const para: string[] = [];
+    // Always take the current line, so a table row that arrives before its separator
+    // (mid-stream) renders as text instead of stalling the loop.
+    const para: string[] = [lines[i++].replace(/^#+\s*/, "")];
     while (i < lines.length && lines[i].trim() && !lines[i].trim().startsWith("|") && !/^\s*([-*]|\d+\.)\s+/.test(lines[i])) {
       para.push(lines[i++].replace(/^#+\s*/, ""));
     }
