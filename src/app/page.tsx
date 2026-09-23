@@ -1,69 +1,70 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import { overview, listOrders } from "@/lib/queries";
+import { latestBrief } from "@/lib/weekly";
+import { OrdersConsole } from "@/components/OrdersConsole";
+import { n0, stamp } from "@/lib/format";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+function briefSections(body: string) {
+  const heads = ["Demand", "Suppliers", "Failures", "Inventory"];
+  const out: { head: string; text: string }[] = [];
+  for (const para of body.split(/\n\s*\n/)) {
+    const m = para.match(/^\s*\**\s*(Demand|Suppliers|Failures|Inventory)\s*\**\s*:\s*\**\s*/i);
+    if (m) out.push({ head: heads.find((h) => h.toLowerCase() === m[1].toLowerCase())!, text: para.slice(m[0].length).trim() });
+    else if (out.length) out[out.length - 1].text += `\n${para.trim()}`;
+  }
+  return out.length ? out : [{ head: "Brief", text: body }];
+}
+
+export default async function Home() {
+  const [o, brief, initial] = await Promise.all([overview(), latestBrief(), listOrders({ tab: "pipeline", months: 3 })]);
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <div className="folio" aria-label="Headline counts">
+        <div>
+          <b>{n0(o.backlogTractors)}</b> tractors booked in the next 12 months
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div>
+          <b>{n0(o.forecast12)}</b> forecast
         </div>
-      </main>
-    </div>
+        <div>
+          <b>{n0(o.pipelineOrders)}</b> orders in the 0-3 month pipeline
+        </div>
+        <div>
+          <b>{n0(o.supplyPlaced + o.supplyQueued)}</b> supply orders in flight
+        </div>
+        <div className={o.lateRisk ? "short" : ""}>
+          <b>{n0(o.lateRisk)}</b> likely to land after the part runs out
+        </div>
+        <div className={o.partsToOrder ? "watch" : ""}>
+          <b>{n0(o.partsToOrder)}</b> parts to reorder
+        </div>
+        <div className={o.elevatedFailures ? "watch" : ""}>
+          <b>{n0(o.elevatedFailures)}</b> part and supplier pairs failing high
+        </div>
+      </div>
+
+      {brief && (
+        <details className="brief-toggle">
+          <summary>
+            <span className="label">Weekly brief</span>
+            <span className="dim">
+              updated {stamp(brief.generated_at.toISOString())}
+            </span>
+          </summary>
+          <div className="brief">
+            {briefSections(brief.body).map((s) => (
+              <div key={s.head}>
+                <h3>{s.head}</h3>
+                <p>{s.text}</p>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      <OrdersConsole initial={initial} />
+    </>
   );
 }
