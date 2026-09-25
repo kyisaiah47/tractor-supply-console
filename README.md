@@ -189,19 +189,19 @@ All bodies are JSON and validated with zod. A bad request returns 400 with the i
 
 | Method | Path | What it does |
 |---|---|---|
-| GET | `/api/orders?tab=pipeline\|backlog&months=&model=&warehouse=&parts=covered\|short` | Customer orders with part allocation and filter counts |
-| POST | `/api/orders` | Records a customer order: `customerId`, `tractorModel`, `quantity`, `requestedDate`, optional `warehouse` |
+| GET | `/api/orders` | Customer orders with part allocation and filter counts. Query params: tab (pipeline or backlog), months, model, warehouse, parts (covered or short). |
+| POST | `/api/orders` | Records a customer order: `customerId, tractorModel, quantity, requestedDate`, optional `warehouse` |
 | GET | `/api/customers` | Customers for the order form |
-| POST | `/api/supply-orders` | `{ lines: [{ sku, quantity, warehouse?, supplier? }] }` queues those lines. `{ customerOrderIds, dryRun }` covers the part shortfalls of those orders. |
-| GET | `/api/supply-orders?status=&source=app` | Supply orders with their job and log |
-| POST | `/api/chat` | The assistant. Streams `meta`, `text`, `tool_call`, `tool_result`, `done` and `error` events. |
+| POST | `/api/supply-orders` | Queues supply order lines, or covers the part shortfalls of a set of customer orders. See the curl examples below for both request shapes. |
+| GET | `/api/supply-orders` | Supply orders with their job and log. Query params: status, source. |
+| POST | `/api/chat` | The assistant. Streams `meta, text, tool_call, tool_result, done` and `error` events. |
 | GET | `/api/models` | The latest output of all four models, with their sources, inputs and outputs |
-| GET | `/api/models/:name` | One model: `demand`, `supplier_delay`, `component_failure` or `inventory_strategy` |
+| GET | `/api/models/:name` | One model: `demand, supplier_delay, component_failure or inventory_strategy` |
 | POST | `/api/jobs/weekly` | Runs the weekly job |
 | GET | `/api/brief` | The latest weekly brief |
 | GET | `/api/overview` | Headline counts |
 | GET | `/api/queue` | Worker heartbeats and recent jobs |
-| GET | `/api/mock-suppliers/:supplier/quote?sku=&qty=` | A supplier's price, stock and lead time |
+| GET | `/api/mock-suppliers/:supplier/quote` | A supplier's price, stock and lead time. Query params: sku, qty. |
 | POST | `/api/mock-suppliers/:supplier/orders` | Places an order with a supplier |
 
 Examples:
@@ -211,6 +211,9 @@ curl 'localhost:3000/api/orders?tab=pipeline&months=1&parts=short&limit=2'
 
 curl -X POST localhost:3000/api/supply-orders -H 'content-type: application/json' \
   -d '{"lines":[{"sku":"HYD-400","quantity":120}]}'
+
+curl -X POST localhost:3000/api/supply-orders -H 'content-type: application/json' \
+  -d '{"customerOrderIds":[12539,12550],"dryRun":true}'
 
 curl -N -X POST localhost:3000/api/chat -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"Which supplier is slowest in Q4?"}]}'
