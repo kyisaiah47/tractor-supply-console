@@ -6,7 +6,7 @@ A working prototype of the supply chain application designed in the Kontakt.io s
 
 **Demo video (under a minute):** it walks through the orders pipeline, ordering parts for selected orders, the weekly brief, the planning assistant drafting an order, each model, the supply order queue and recording a new order.
 
-[![Demo video](https://i.ytimg.com/vi/7u72frwd3T8/hqdefault.jpg)](https://youtu.be/7u72frwd3T8)
+[![Demo video](https://i.ytimg.com/vi/hRGQxR8rd-8/hqdefault.jpg)](https://youtu.be/hRGQxR8rd-8)
 
 ## Run it locally
 
