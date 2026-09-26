@@ -7,9 +7,14 @@ worker's retry path is exercised.
 Placing an order honours an Idempotency-Key header the way a real supplier API does: the
 supplier stores the key with the result, and a repeat with the same key gets the stored result
 back instead of a second order. mock_supplier_orders is that store.
+
+MOCK_SUPPLIER_LATENCY_MS makes the order call take that long before the supplier records the
+order, like a slow supplier. It is 0 unless set; it gives the kill test a window to stop the
+worker while a supplier call is in flight.
 """
 
 import json
+import os
 import time
 import uuid
 
@@ -79,6 +84,7 @@ def place_order(slug: str, sku: str, quantity: int, idempotency_key: str | None)
     qt = quote(slug, sku, quantity, "order")
     if not qt:
         return None, False
+    time.sleep(int(os.environ.get("MOCK_SUPPLIER_LATENCY_MS") or 0) / 1000)
     ref = f"{slug.upper()}-{int(_hash(f'{slug}|{sku}|{quantity}|{time.time_ns()}') * 1e8):08d}"
     result = json.dumps({**qt, "externalRef": ref, "accepted": True})
     with engine().begin() as c:
