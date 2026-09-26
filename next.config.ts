@@ -6,6 +6,8 @@ const API_URL = process.env.API_URL ?? "http://localhost:8000";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  // Next.js 16 writes AGENTS.md and CLAUDE.md into the repo on `next dev` unless this is off.
+  agentRules: false,
   experimental: {
     // The planning assistant and the weekly job can run longer than the 30 s default.
     proxyTimeout: 120_000,

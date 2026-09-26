@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChatCircleText, Minus, PaperPlaneRight, CheckCircle, WarningCircle, ArrowCounterClockwise, CircleNotch } from "@phosphor-icons/react";
 import { Markdown } from "./Markdown";
-import { usd } from "@/lib/format";
+import { errorText, usd } from "@/lib/format";
 import { newIdempotencyKey } from "@/lib/idempotency";
 
 type Proposal = {
@@ -108,15 +108,14 @@ export function ChatDock(props: { minimized: boolean; onToggle: () => void }) {
           }
         }
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
       update((m) => ({ ...m, error: "The assistant could not be reached. Try again in a moment." }));
     } finally {
       setBusy(false);
     }
   }
 
-  async function confirm(msgIndex: number, id: string, key: string, data: Proposal) {
+  async function confirmDraft(msgIndex: number, id: string, key: string, data: Proposal) {
     const set = (state: "placing" | "placed" | "open", created?: number) =>
       setMsgs((all) =>
         all.map((m, i) =>
@@ -131,13 +130,15 @@ export function ChatDock(props: { minimized: boolean; onToggle: () => void }) {
         source: "chatbot",
         lines: data.lines.map((l) => ({ sku: l.sku, quantity: l.quantity, warehouse: l.warehouse, supplier: l.supplier, note: l.note ?? data.reason })),
       }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
+    }).catch(() => null);
+    const body = res ? await res.json().catch(() => ({})) : {};
+    if (!res?.ok) {
       set("open");
-      alert("The order could not be placed. Try again.");
+      const why = res ? errorText(body.error) : "the server could not be reached";
+      setMsgs((all) => all.map((m, i) => (i !== msgIndex ? m : { ...m, error: `The order could not be placed: ${why}. Try again.` })));
       return;
     }
+    setMsgs((all) => all.map((m, i) => (i !== msgIndex ? m : { ...m, error: undefined })));
     set("placed", body.created?.length ?? 0);
     router.refresh();
   }
@@ -255,7 +256,7 @@ export function ChatDock(props: { minimized: boolean; onToggle: () => void }) {
                             <button className="btn small" onClick={() => dismiss(mi, p.id)} disabled={p.state === "placing"}>
                               Dismiss
                             </button>
-                            <button className="btn primary small" onClick={() => confirm(mi, p.id, p.key, p.data)} disabled={p.state === "placing"}>
+                            <button className="btn primary small" onClick={() => confirmDraft(mi, p.id, p.key, p.data)} disabled={p.state === "placing"}>
                               {p.state === "placing" ? "Ordering" : "Confirm order"}
                             </button>
                           </span>

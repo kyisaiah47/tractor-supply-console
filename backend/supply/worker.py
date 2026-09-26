@@ -179,7 +179,16 @@ def _choose_supplier(job: Job, so: dict, http: httpx.Client, base_url: str, work
         effective = qt["unitPrice"] / (1 - fr) * (1 + DELAY_COST_PER_DAY * (d + (0 if qt["canFill"] else 14)))
         scored.append({**qt, "failureRate": fr, "expectedDelay": d, "effective": round(effective, 2)})
     scored.sort(key=lambda s: s["effective"])
-    best = scored[0]
+    # A supplier the person confirmed wins when it quoted and can fill the order.
+    wanted = so.get("supplier")
+    picked = next((s for s in scored if s["supplier"] == wanted and s["canFill"]), None) if wanted else None
+    best = picked or scored[0]
+    if picked:
+        why = f"{best['supplier']} was chosen when the order was confirmed, and it can fill it."
+    elif wanted:
+        why = f"{wanted} was chosen when the order was confirmed, but it did not quote or cannot fill it. {best['supplier']} has the lowest cost after expected failures and delay."
+    else:
+        why = f"{best['supplier']} has the lowest cost after expected failures and delay."
 
     key = supplier_key(job.supply_order_id)
     with engine().begin() as c:
@@ -196,7 +205,7 @@ def _choose_supplier(job: Job, so: dict, http: httpx.Client, base_url: str, work
             job,
             worker,
             {
-                "msg": f"{len(quotes)} of {len(slugs)} suppliers quoted. {best['supplier']} has the lowest cost after expected failures and delay.",
+                "msg": f"{len(quotes)} of {len(slugs)} suppliers quoted. {why}",
                 "quotes": [
                     {k: s[k] for k in ("supplier", "unitPrice", "canFill", "leadDays", "failureRate", "expectedDelay", "effective")}
                     for s in scored
@@ -209,7 +218,7 @@ def _choose_supplier(job: Job, so: dict, http: httpx.Client, base_url: str, work
 
 
 def process_job(job: Job, http: httpx.Client, base_url: str = API_URL, worker: str = "") -> None:
-    so = one("SELECT sku, quantity, warehouse FROM supply_orders WHERE id = :id", {"id": job.supply_order_id})
+    so = one("SELECT sku, quantity, warehouse, supplier FROM supply_orders WHERE id = :id", {"id": job.supply_order_id})
     if not so:
         raise RuntimeError(f"supply order {job.supply_order_id} is missing")
 

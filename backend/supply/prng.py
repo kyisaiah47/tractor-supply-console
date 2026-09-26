@@ -1,7 +1,6 @@
 """Seeded random numbers, so the generated dataset is the same on every machine.
 
-mulberry32 in 32-bit integer arithmetic. It gives the same sequence the original TypeScript
-generator gave, so a planning date produces the same dataset as before the port.
+mulberry32 in 32-bit integer arithmetic.
 """
 
 import math

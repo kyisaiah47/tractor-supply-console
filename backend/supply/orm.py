@@ -84,29 +84,3 @@ class IdempotencyKey(Base):
     status_code: Mapped[int]
     response: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-
-
-class MockSupplierOrder(Base):
-    __tablename__ = "mock_supplier_orders"
-    idempotency_key: Mapped[str] = mapped_column(Text, primary_key=True)
-    supplier: Mapped[str] = mapped_column(Text)
-    sku: Mapped[str] = mapped_column(Text)
-    quantity: Mapped[int]
-    response: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-
-
-class LlmCall(Base):
-    __tablename__ = "llm_calls"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    purpose: Mapped[str] = mapped_column(Text)
-    provider: Mapped[str] = mapped_column(Text)
-    model: Mapped[str] = mapped_column(Text)
-    input_tokens: Mapped[int] = mapped_column(server_default="0")
-    output_tokens: Mapped[int] = mapped_column(server_default="0")
-    latency_ms: Mapped[int]
-    tool_rounds: Mapped[int] = mapped_column(server_default="0")
-    request_id: Mapped[str | None] = mapped_column(Text)
-    cost_usd: Mapped[float] = mapped_column(Numeric(12, 6, asdecimal=False), server_default="0")
-    error: Mapped[str | None] = mapped_column(Text)

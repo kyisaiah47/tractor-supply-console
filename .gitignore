@@ -44,8 +44,6 @@ next-env.d.ts
 
 # local
 .logs/
-AGENTS.md
-CLAUDE.md
 
 # generated: rebuilt by `npm run db:setup` from data/market_signals.csv, changes with every run's date
 /data/generated/

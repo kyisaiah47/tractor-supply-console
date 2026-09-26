@@ -28,7 +28,7 @@ def engine() -> Engine:
     )
 
     @event.listens_for(eng, "connect")
-    def _numeric_as_float(dbapi_conn, _record) -> None:  # noqa: ANN001
+    def _numeric_as_float(dbapi_conn, _record) -> None:
         dbapi_conn.adapters.register_loader("numeric", FloatLoader)
 
     return eng

@@ -3,7 +3,7 @@
 Model codes, supplier codes and warehouse codes are the ones in data/market_signals.csv.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 from .prng import js_round
 
@@ -28,6 +28,14 @@ WAREHOUSES: list[dict[str, str]] = [
     {"code": "TX", "name": "Amarillo, TX"},
 ]
 WAREHOUSE_CODES = [w["code"] for w in WAREHOUSES]
+
+# The same codes as types, for request validation in the API and the assistant's tools.
+TractorModel = Literal["TX-100", "TX-200", "TX-300", "TX-400", "TX-500"]
+Supplier = Literal["Supplier A", "Supplier B", "Supplier C", "Supplier D", "Supplier E"]
+Warehouse = Literal["CA", "FL", "IL", "NY", "TX"]
+assert list(TractorModel.__args__) == MODEL_CODES  # type: ignore[attr-defined]
+assert list(Supplier.__args__) == SUPPLIER_CODES  # type: ignore[attr-defined]
+assert list(Warehouse.__args__) == WAREHOUSE_CODES  # type: ignore[attr-defined]
 
 # Ten part categories per tractor. costShare is the share of the list price the part costs;
 # suppliers lists who can make it; leadDays is the nominal lead time a supplier quotes.

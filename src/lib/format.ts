@@ -1,8 +1,13 @@
 export const n0 = (x: number | null | undefined) => (x == null ? "-" : Math.round(x).toLocaleString("en-US"));
 export const usd = (x: number | null | undefined) => (x == null ? "-" : `$${Math.round(x).toLocaleString("en-US")}`);
-export const usdShort = (x: number) =>
-  x >= 1e6 ? `$${(x / 1e6).toFixed(1)}M` : x >= 1e3 ? `$${Math.round(x / 1e3)}k` : `$${Math.round(x)}`;
 export const pct = (x: number | null | undefined, d = 1) => (x == null ? "-" : `${(x * 100).toFixed(d)}%`);
+
+// The API's error is a message, or a list of validation issues. Either way, one readable line.
+export function errorText(e: unknown): string {
+  if (typeof e === "string") return e;
+  if (Array.isArray(e)) return e.map((i) => [i?.loc?.at(-1), i?.msg].filter(Boolean).join(": ")).join("; ");
+  return "the server did not say why. Try again.";
+}
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 

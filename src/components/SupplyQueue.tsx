@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { CaretDown, CaretRight } from "@phosphor-icons/react";
 import { dayShort, usd } from "@/lib/format";
-import { useNow } from "@/lib/useNow";
+import { useNow } from "@/lib/hooks";
 
 type Row = {
   id: number;

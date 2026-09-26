@@ -1,10 +1,9 @@
 """The HTTP API. Every path the Next.js UI calls lives here; Next.js proxies /api/* to it.
 
-Bodies are validated with Pydantic. A bad request returns 400 with the issues, as before.
+Bodies are validated with Pydantic. A bad request returns 400 with the issues.
 """
 
 import json
-import re
 import time
 from collections.abc import Iterator
 from datetime import date
@@ -19,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from . import queries
 from .agent.run import run_agent
-from .catalog import MODEL_CODES, WAREHOUSE_CODES
+from .catalog import Supplier, TractorModel, Warehouse
 from .config import as_of
 from .db import one, rows
 from .idempotency import Outcome, run_idempotent
@@ -32,10 +31,7 @@ from .weekly import latest_brief, run_weekly_job
 
 app = FastAPI(title="Tractor Supply Console API")
 
-TractorModel = Literal["TX-100", "TX-200", "TX-300", "TX-400", "TX-500"]
-Warehouse = Literal["CA", "FL", "IL", "NY", "TX"]
 Source = Literal["order_form", "selected_orders", "recommendation", "chatbot", "api"]
-assert list(TractorModel.__args__) == MODEL_CODES and list(Warehouse.__args__) == WAREHOUSE_CODES  # type: ignore[attr-defined]
 IdemKey = Annotated[str | None, Header(alias="Idempotency-Key", max_length=200)]
 
 
@@ -99,9 +95,12 @@ class NewOrder(BaseModel):
     @field_validator("requestedDate")
     @classmethod
     def _day(cls, v: str) -> str:
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
-            raise ValueError("requestedDate must be YYYY-MM-DD")
-        return v
+        try:
+            if len(v) == 10:
+                return date.fromisoformat(v).isoformat()
+        except ValueError:
+            pass
+        raise ValueError("requestedDate must be a real date, YYYY-MM-DD")
 
 
 @app.post("/api/orders", status_code=201)
@@ -142,8 +141,8 @@ def get_customers() -> dict:
 class SupplyLine(BaseModel):
     sku: str = Field(min_length=3)
     quantity: int = Field(gt=0, le=100_000)
-    warehouse: str | None = Field(None, min_length=2, max_length=2)
-    supplier: str | None = None
+    warehouse: Warehouse | None = None
+    supplier: Supplier | None = None
     customerOrderId: int | None = None
     note: str | None = Field(None, max_length=500)
 
@@ -159,7 +158,9 @@ class CoverBody(BaseModel):
 
 
 @app.get("/api/supply-orders")
-def get_supply_orders(status: str | None = None, source: str | None = None, limit: int = 100) -> dict:
+def get_supply_orders(
+    status: Literal["queued", "placed", "fulfilled", "failed"] | None = None, source: Literal["app"] | None = None, limit: int = 100
+) -> dict:
     """Supply orders with their queue job, newest first."""
     where = ["1=1"]
     params: dict = {"limit": max(1, min(500, limit))}
@@ -216,7 +217,8 @@ def post_supply_orders(raw: Annotated[Any, Body()] = None, idempotency_key: Idem
                             "sku": ln["sku"],
                             "quantity": ln["quantity"],
                             "warehouse": ln["warehouse"],
-                            "supplier": ln["supplier"],
+                            # The review shows the likely supplier; the worker quotes every supplier and picks.
+                            "supplier": None,
                             "note": ln["note"],
                             "customerOrderId": ln["forOrders"][0],
                         }

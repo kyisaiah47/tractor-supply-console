@@ -77,17 +77,18 @@ def create_supply_orders(s: Session, lines: list[dict], source: str) -> list[dic
     for line in lines:
         if line["sku"] not in known:
             raise UnknownPart(f"Unknown part {line['sku']}")
-        note = line.get("note") or (f"Preferred supplier: {line['supplier']}" if line.get("supplier") else None)
         so = SupplyOrder(
             sku=line["sku"],
-            supplier=None,
+            # The supplier the person confirmed, if any. The worker places with it when it can fill the order.
+            supplier=line.get("supplier"),
+            # Reorder plan lines are company-wide, with no warehouse. They are received at Peoria, IL.
             warehouse=line.get("warehouse") or "IL",
             quantity=line["quantity"],
             customer_order_id=line.get("customerOrderId"),
             date_ordered=date.fromisoformat(as_of()),
             status="queued",
             source=source,
-            note=note,
+            note=line.get("note"),
         )
         s.add(so)
         s.flush()

@@ -51,13 +51,15 @@ Other commands:
 | Command | What it does |
 |---|---|
 | `npm test` | The backend tests and the eval golden set (pytest). The tests seed their own database. |
+| `npm run lint`, `npm run typecheck` | ESLint and TypeScript for the web app |
 | `npm run job:weekly` | Runs the weekly job: all four models, then the weekly brief |
 | `npm run api` | Runs the API on its own (`npm run dev` already starts it) |
 | `npm run worker` | Runs the supply order worker on its own (`npm run dev` already starts it) |
 | `npm run data:generate` | Rebuilds `data/generated/` from the provided CSV |
+| `npm run db:seed` | Loads `data/generated/` into Postgres and runs the models, without generating again |
 | `npm run db:down` | Stops the Docker services |
 
-Every `npm run` command for the backend calls the `supply` command line in `backend/`. `uv --directory backend run supply --help` lists them.
+The other backend commands call the `supply` command line in `backend/`. `uv --directory backend run supply --help` lists them.
 
 ## From the whiteboard to the code
 
@@ -210,7 +212,7 @@ Each check also runs on an answer written to fail it, so a check that passes eve
 
 Three places create supply orders: Order all selected on the Orders page, Queue selected on the reorder plan, and Confirm on an assistant draft. Each one writes the order as `queued` with a job in `supply_jobs`.
 
-The worker claims jobs with `FOR UPDATE SKIP LOCKED`, so several workers can run at once. For each job it gets a quote from every supplier that makes the part, scores the quotes on price adjusted for that supplier's failure rate and expected delay, and places the order with the lowest. It records every step in the job's log. About 1 in 12 mock supplier calls returns a 503, and the worker retries with exponential backoff up to five times. After five tries the job is `failed` with the error recorded.
+The worker claims jobs with `FOR UPDATE SKIP LOCKED`, so several workers can run at once. For each job it gets a quote from every supplier that makes the part, scores the quotes on price adjusted for that supplier's failure rate and expected delay, and places the order with the lowest. When a person confirmed a supplier, on the reorder plan or an assistant draft, the worker uses that supplier if it quotes and can fill the order, and logs the reason if it cannot. Reorder plan orders are company-wide, so they are received at the Peoria, IL warehouse. It records every step in the job's log. About 1 in 12 mock supplier calls returns a 503, and the worker retries with exponential backoff. After five tries in all, the job is `failed` with the error recorded.
 
 Every step can be repeated safely:
 
@@ -225,15 +227,15 @@ Every step can be repeated safely:
 
 ## API
 
-The API is FastAPI in [backend/supply/api.py](backend/supply/api.py). Next.js forwards every `/api/*` request to it, so the paths work on port 3000 and on port 8000. All bodies are JSON and validated with Pydantic. A bad request returns 400 with the issues.
+The API is FastAPI in [backend/supply/api.py](backend/supply/api.py). Next.js forwards every `/api/*` request to it, so the paths work on port 3000 and on port 8000. All bodies are JSON and validated with Pydantic. A bad request returns 400 with the issues. With the stack running, FastAPI serves the OpenAPI definitions at http://localhost:8000/docs.
 
 | Method | Path | What it does |
 |---|---|---|
-| GET | `/api/orders` | Customer orders with part allocation and filter counts. Query params: tab (pipeline or backlog), months, model, warehouse, parts (covered or short). |
+| GET | `/api/orders` | Customer orders with part allocation and filter counts. Query params: tab (pipeline or backlog), months, model, warehouse, parts (covered or short), limit, offset. |
 | POST | `/api/orders` | Records a customer order: `customerId, tractorModel, quantity, requestedDate`, optional `warehouse`. Takes an `Idempotency-Key` header. |
 | GET | `/api/customers` | Customers for the order form |
 | POST | `/api/supply-orders` | Queues supply order lines, or covers the part shortfalls of a set of customer orders. See the curl examples below for both request shapes. Takes an `Idempotency-Key` header. |
-| GET | `/api/supply-orders` | Supply orders with their job and log. Query params: status, source. |
+| GET | `/api/supply-orders` | Supply orders with their job and log. Query params: status (queued, placed, fulfilled or failed), source (`app` leaves out the generated history), limit. |
 | GET | `/api/supply-orders/summary` | Counts for the supply orders page |
 | POST | `/api/chat` | The assistant. Streams `meta, text, tool_call, tool_result, done` and `error` events. |
 | GET | `/api/models` | The latest output of all four models, with their sources, inputs and outputs |
@@ -286,12 +288,12 @@ src/components/               the console UI
 
 ## Tests
 
-`npm test` runs 67 pytest tests. 47 are in `backend/tests`:
+`npm test` runs 68 pytest tests. 48 are in `backend/tests`:
 
 - 9 check that each model beats its baseline and finds each planted effect.
 - 20 cover the API: every read route, bad requests, and idempotency, including six requests sent at once with one key.
-- 6 cover the worker: the saved supplier, one supplier order when a job runs twice, a worker killed after the supplier accepted, the fencing of a stale lease, and the dead-letter state.
-- 7 cover the assistant against recorded Claude and Gemini streams: the tool loop, token and cost recording, the 429 fallbacks, and a draft that orders nothing.
+- 7 cover the worker: the saved supplier, a supplier the person confirmed, one supplier order when a job runs twice, a worker killed after the supplier accepted, the fencing of a stale lease, and the dead-letter state.
+- 7 cover the assistant: the tool loop, token and cost recording and the 429 fallbacks against recorded Claude and Gemini streams, plus the keyword mode, the streamed events of a draft that orders nothing, input checks and the usage readout.
 - 5 cover the generator's determinism, one brief per week, the stock-out calculation and the failure intervals.
 
 The other 20 are the eval golden set and its checks. The tests generate and seed their own database at a fixed planning date, and they call no model: both API keys are blanked. CI runs ruff, mypy and pytest for the backend, and lint, typecheck and a production build for the web app, on every push.

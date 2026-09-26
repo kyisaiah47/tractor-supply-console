@@ -72,6 +72,17 @@ def test_a_job_is_quoted_saved_and_placed():
     assert "Placed with" in row["log"][-1]["msg"]
 
 
+def test_a_confirmed_supplier_is_used_when_it_can_fill_the_order():
+    # Supplier E's hydraulic pumps fail most often, so the worker never picks it on cost alone.
+    r = TestClient(app).post("/api/supply-orders", json={"lines": [{"sku": "HYD-300", "quantity": 40, "supplier": "Supplier E"}]})
+    assert r.status_code == 201, r.text
+    created = r.json()["created"][0]
+    row = drain(created["jobId"])
+    assert row["status"] == "done" and row["supplier"] == "Supplier E"
+    so = one("SELECT supplier FROM supply_orders WHERE id = :id", {"id": created["id"]})
+    assert so and so["supplier"] == "Supplier E"
+
+
 def test_processing_the_same_job_twice_records_one_supplier_order():
     created = new_job()
     first = drain(created["jobId"])

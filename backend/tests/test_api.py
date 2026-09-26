@@ -45,6 +45,9 @@ def test_a_bad_request_returns_400_with_the_issues():
     r = client.post("/api/orders", json={"customerId": 3, "tractorModel": "TX-900", "quantity": 2, "requestedDate": "2026-12-01"})
     assert r.status_code == 400
     assert r.json()["error"][0]["loc"][-1] == "tractorModel"
+    # A well-formed but impossible date is a bad request too, not a server error.
+    r = client.post("/api/orders", json={"customerId": 3, "tractorModel": "TX-300", "quantity": 2, "requestedDate": "2027-02-30"})
+    assert r.status_code == 400 and r.json()["error"][0]["loc"][-1] == "requestedDate"
     assert client.get("/api/orders?model=TX-900").status_code == 400
     assert client.get("/api/models/nope").status_code == 404
 

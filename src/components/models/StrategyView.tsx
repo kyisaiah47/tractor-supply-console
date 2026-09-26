@@ -1,10 +1,10 @@
 "use client";
 
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CaretDown, CaretRight, ShoppingCart } from "@phosphor-icons/react";
 import type { StrategyRow } from "@/lib/types";
-import { n0, pct, usd } from "@/lib/format";
+import { errorText, n0, pct, usd } from "@/lib/format";
 import { newIdempotencyKey } from "@/lib/idempotency";
 
 type Row = StrategyRow;
@@ -16,8 +16,12 @@ export function StrategyView({ rows }: { rows: Row[] }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const router = useRouter();
-  // One key per Queue selected action. A retry after an error reuses it; a success starts a new one.
+  // One key per Queue selected action. A retry of the same selection reuses it; a success or a
+  // change of selection starts a new one, since the API refuses a key sent with a different body.
   const queueKey = useRef(newIdempotencyKey());
+  useEffect(() => {
+    queueKey.current = newIdempotencyKey();
+  }, [sel]);
   const shown = rows.filter((r) => action === "all" || r.action === action);
   const counts = { order: 0, ok: 0, excess: 0 } as Record<string, number>;
   rows.forEach((r) => counts[r.action]++);
@@ -32,11 +36,15 @@ export function StrategyView({ rows }: { rows: Row[] }) {
         source: "recommendation",
         lines: selRows.map((r) => ({ sku: r.sku, quantity: r.quantity, supplier: r.supplier, note: r.reason })),
       }),
-    });
-    const body = await res.json().catch(() => ({}));
+    }).catch(() => null);
+    const body = res ? await res.json().catch(() => ({})) : {};
     setBusy(false);
-    if (res.ok) queueKey.current = newIdempotencyKey();
-    setMsg(res.ok ? `Queued ${body.created.length} supply orders.` : `Nothing was queued: ${JSON.stringify(body.error)}`);
+    if (res?.ok) queueKey.current = newIdempotencyKey();
+    setMsg(
+      res?.ok
+        ? `Queued ${body.created.length} supply orders.`
+        : `Nothing was queued: ${res ? errorText(body.error) : "the server could not be reached. Try again."}`,
+    );
     setSel(new Set());
     router.refresh();
   }

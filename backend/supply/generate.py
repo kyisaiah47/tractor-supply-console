@@ -19,7 +19,7 @@ every supplier averages about 14.7 days late and every model fails about 5%. The
 check that each planted effect is recovered, which is how we know the models find real signal.
 
 Deterministic: the same planning date gives the same files. Sums are plain left-to-right loops
-and rounding is half-up, so the output matches the original TypeScript generator byte for byte.
+and rounding is half-up, so the output is identical on every machine.
 """
 
 import csv

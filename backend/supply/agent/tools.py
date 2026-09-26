@@ -10,16 +10,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
+from ..catalog import Supplier, TractorModel, Warehouse
 from ..config import as_of
 from ..db import rows
 from ..models import latest_runs
 from ..queries import list_orders, overview
 from ..supply_orders import lines_for_customer_orders
 from ..weekly import latest_brief
-
-TractorModel = Literal["TX-100", "TX-200", "TX-300", "TX-400", "TX-500"]
-Supplier = Literal["Supplier A", "Supplier B", "Supplier C", "Supplier D", "Supplier E"]
-Warehouse = Literal["CA", "FL", "IL", "NY", "TX"]
 
 
 def _runs() -> dict:

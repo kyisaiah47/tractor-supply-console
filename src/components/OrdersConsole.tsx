@@ -6,7 +6,8 @@ import NumberFlow from "@number-flow/react";
 import { CaretRight, CaretDown, ShoppingCart, Warning, Package, X } from "@phosphor-icons/react";
 import { Modal } from "./ui/Modal";
 import type { OrdersData } from "@/lib/types";
-import { STAGE_LABEL, dayShort, n0, usd } from "@/lib/format";
+import { STAGE_LABEL, dayShort, errorText, n0, usd } from "@/lib/format";
+import { TRACTOR_MODELS, WAREHOUSES as WAREHOUSE_LIST } from "@/lib/catalog";
 import { newIdempotencyKey } from "@/lib/idempotency";
 
 type Data = OrdersData;
@@ -14,8 +15,8 @@ type Filters = { tab: "pipeline" | "backlog"; months: number; model?: string; wa
 type PlanLine = { sku: string; quantity: number; warehouse?: string; supplier?: string; unitPrice: number | null; note?: string; forOrders: number[] };
 type Plan = { lines: PlanLine[]; covered: number; requested: number };
 
-const MODELS = ["TX-100", "TX-200", "TX-300", "TX-400", "TX-500"];
-const WAREHOUSES = ["CA", "FL", "IL", "NY", "TX"];
+const MODELS = TRACTOR_MODELS.map((m) => m.code);
+const WAREHOUSES = WAREHOUSE_LIST.map((w) => w.code);
 
 export function OrdersConsole({ initial }: { initial: Data }) {
   const [f, setF] = useState<Filters>({ tab: "pipeline", months: 3 });
@@ -31,6 +32,8 @@ export function OrdersConsole({ initial }: { initial: Data }) {
   const first = useRef(true);
   // One key per review: confirming twice, or retrying after an error, cannot queue the parts twice.
   const orderKey = useRef<string>("");
+  // Only the newest filter request may update the table.
+  const loadSeq = useRef(0);
   const router = useRouter();
 
   const load = useCallback(async (next: Filters) => {
@@ -39,9 +42,18 @@ export function OrdersConsole({ initial }: { initial: Data }) {
     if (next.model) p.set("model", next.model);
     if (next.warehouse) p.set("warehouse", next.warehouse);
     if (next.parts) p.set("parts", next.parts);
-    const res = await fetch(`/api/orders?${p}`);
-    if (res.ok) setData(await res.json());
-    setLoading(false);
+    const seq = ++loadSeq.current;
+    try {
+      const res = await fetch(`/api/orders?${p}`);
+      const body = res.ok ? await res.json() : null;
+      if (seq !== loadSeq.current) return;
+      if (body) setData(body);
+      else setToast("The orders could not be loaded. Try again.");
+    } catch {
+      if (seq === loadSeq.current) setToast("The orders could not be loaded. Try again.");
+    } finally {
+      if (seq === loadSeq.current) setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -83,28 +95,46 @@ export function OrdersConsole({ initial }: { initial: Data }) {
     setPlan(null);
     setReviewOpen(true);
     setPlanning(true);
-    const res = await fetch("/api/supply-orders", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ customerOrderIds: [...sel], dryRun: true }),
-    });
-    setPlanning(false);
-    if (res.ok) setPlan(await res.json());
+    try {
+      const res = await fetch("/api/supply-orders", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ customerOrderIds: [...sel], dryRun: true }),
+      });
+      if (res.ok) setPlan(await res.json());
+      else {
+        setReviewOpen(false);
+        setToast("The review could not be prepared. Try again.");
+      }
+    } catch {
+      setReviewOpen(false);
+      setToast("The review could not be prepared. Try again.");
+    } finally {
+      setPlanning(false);
+    }
   }
 
   async function placeOrder() {
     setPlacing(true);
-    const res = await fetch("/api/supply-orders", {
-      method: "POST",
-      headers: { "content-type": "application/json", "Idempotency-Key": orderKey.current },
-      body: JSON.stringify({ customerOrderIds: [...sel], dryRun: false }),
-    });
-    const body = await res.json();
+    let res: Response;
+    let body;
+    try {
+      res = await fetch("/api/supply-orders", {
+        method: "POST",
+        headers: { "content-type": "application/json", "Idempotency-Key": orderKey.current },
+        body: JSON.stringify({ customerOrderIds: [...sel], dryRun: false }),
+      });
+      body = await res.json().catch(() => ({}));
+    } catch {
+      setPlacing(false);
+      setToast("Nothing was queued: the server could not be reached. Try again.");
+      return;
+    }
     setPlacing(false);
     setReviewOpen(false);
     setPlan(null);
     if (!res.ok) {
-      setToast(`Nothing was queued: ${JSON.stringify(body.error)}`);
+      setToast(`Nothing was queued: ${errorText(body.error)}`);
       return;
     }
     setToast(

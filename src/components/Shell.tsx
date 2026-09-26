@@ -9,7 +9,7 @@ import { Mark } from "./Mark";
 import { ChatDock } from "./ChatDock";
 import { NewOrderModal } from "./NewOrderModal";
 import { day } from "@/lib/format";
-import { useLocalFlag } from "@/lib/useNow";
+import { useLocalFlag } from "@/lib/hooks";
 
 const NAV = [
   { href: "/", label: "Orders", Icon: ListChecks },
