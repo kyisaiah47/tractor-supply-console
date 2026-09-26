@@ -3,6 +3,8 @@
 The generator reads these values and the model tests check each one is recovered.
 """
 
+from typing import Any
+
 # Our order book is this share of the dataset's market-level Demand_Units.
 MARKET_SHARE = 0.01
 
@@ -20,7 +22,7 @@ SUPPLIER_DELAY: dict[str, float | dict[str, float]] = {
 }
 
 # Hydraulic pumps from Supplier E fail 2.5x as often; TX-400 transmissions 1.8x.
-FAILURE = [
+FAILURE: list[dict[str, Any]] = [
     {"category": "HYD", "supplier": "Supplier E", "model": None, "multiplier": 2.5},
     {"category": "TRN", "supplier": None, "model": "TX-400", "multiplier": 1.8},
 ]
