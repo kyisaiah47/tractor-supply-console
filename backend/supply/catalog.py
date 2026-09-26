@@ -3,9 +3,11 @@
 Model codes, supplier codes and warehouse codes are the ones in data/market_signals.csv.
 """
 
+from typing import Any
+
 from .prng import js_round
 
-TRACTOR_MODELS = [
+TRACTOR_MODELS: list[dict[str, Any]] = [
     {"code": "TX-100", "name": "Compact utility", "horsepower": 25, "listPrice": 28_000, "buildDays": 5},
     {"code": "TX-200", "name": "Utility", "horsepower": 60, "listPrice": 58_000, "buildDays": 7},
     {"code": "TX-300", "name": "Mid row-crop", "horsepower": 130, "listPrice": 145_000, "buildDays": 10},
@@ -15,10 +17,10 @@ TRACTOR_MODELS = [
 MODEL_CODES = [m["code"] for m in TRACTOR_MODELS]
 BUILD_DAYS = {m["code"]: m["buildDays"] for m in TRACTOR_MODELS}
 
-SUPPLIERS = [{"code": f"Supplier {c}", "slug": c.lower(), "name": f"Supplier {c}"} for c in "ABCDE"]
+SUPPLIERS: list[dict[str, str]] = [{"code": f"Supplier {c}", "slug": c.lower(), "name": f"Supplier {c}"} for c in "ABCDE"]
 SUPPLIER_CODES = [s["code"] for s in SUPPLIERS]
 
-WAREHOUSES = [
+WAREHOUSES: list[dict[str, str]] = [
     {"code": "CA", "name": "Fresno, CA"},
     {"code": "FL", "name": "Lakeland, FL"},
     {"code": "IL", "name": "Peoria, IL"},
@@ -29,7 +31,7 @@ WAREHOUSE_CODES = [w["code"] for w in WAREHOUSES]
 
 # Ten part categories per tractor. costShare is the share of the list price the part costs;
 # suppliers lists who can make it; leadDays is the nominal lead time a supplier quotes.
-PART_CATEGORIES = [
+PART_CATEGORIES: list[dict[str, Any]] = [
     {"key": "ENG", "name": "Engine", "costShare": 0.16, "suppliers": ["Supplier A", "Supplier B", "Supplier D"], "leadDays": 35},
     {"key": "TRN", "name": "Transmission", "costShare": 0.1, "suppliers": ["Supplier B", "Supplier C", "Supplier E"], "leadDays": 30},
     {"key": "HYD", "name": "Hydraulic pump", "costShare": 0.035, "suppliers": ["Supplier C", "Supplier E", "Supplier A"], "leadDays": 21},

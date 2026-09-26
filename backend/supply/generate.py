@@ -146,9 +146,13 @@ def generate(as_of: str | None = None, out_dir: Path | None = None) -> dict:
     def failure_rate(model: str, category: str, supplier: str, ym: str) -> float:
         pool = failure_by_model_month.get(f"{model}|{ym}")
         p = _mean(pool) if pool else 0.05
-        for f in planted.FAILURE:
-            if f["category"] == category and (not f["supplier"] or f["supplier"] == supplier) and (not f["model"] or f["model"] == model):
-                p *= f["multiplier"]
+        for eff in planted.FAILURE:
+            if (
+                eff["category"] == category
+                and (not eff["supplier"] or eff["supplier"] == supplier)
+                and (not eff["model"] or eff["model"] == model)
+            ):
+                p *= eff["multiplier"]
         return min(p, 0.6)
 
     y0, m0 = int(start[:4]), int(start[5:7])
@@ -297,11 +301,11 @@ def generate(as_of: str | None = None, out_dir: Path | None = None) -> dict:
             for cat in PART_CATEGORIES:
                 sku = sku_for(cat["key"], m["code"])
                 opts = suppliers_by_sku[sku]
-                r = rng()
+                roll = rng()
                 choice = opts[-1]
                 for i in range(len(opts)):
-                    r -= SUPPLIER_WEIGHTS[i] if i < len(SUPPLIER_WEIGHTS) else 0
-                    if r <= 0:
+                    roll -= SUPPLIER_WEIGHTS[i] if i < len(SUPPLIER_WEIGHTS) else 0
+                    if roll <= 0:
                         choice = opts[i]
                         break
                 need = f"{ym}-01"
@@ -327,9 +331,9 @@ def generate(as_of: str | None = None, out_dir: Path | None = None) -> dict:
                 }
                 supply_orders.append(so)
                 if fulfilled:
-                    p = failure_rate(m["code"], cat["key"], choice["supplier"], arrives[:7])
+                    rate = failure_rate(m["code"], cat["key"], choice["supplier"], arrives[:7])
                     broken_at = add_days(arrives, rand_int(rng, 0, 120))
-                    broken = binomial(rng, qty, p) if broken_at < as_of else 0
+                    broken = binomial(rng, qty, rate) if broken_at < as_of else 0
                     lots.append(
                         {
                             "id": len(lots) + 1,
