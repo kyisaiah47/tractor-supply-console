@@ -49,3 +49,10 @@ CLAUDE.md
 
 # generated: rebuilt by `npm run db:setup` from data/market_signals.csv, changes with every run's date
 /data/generated/
+
+# python
+__pycache__/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
