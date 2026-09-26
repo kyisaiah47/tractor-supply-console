@@ -1,0 +1,12 @@
+{"id": "slowest-supplier-q4", "question": "Which supplier is slowest in Q4?", "expected_tools": ["get_supplier_delays"]}
+{"id": "late-supply-orders", "question": "Which open supply orders will arrive after their part runs out?", "expected_tools": ["get_supplier_delays"]}
+{"id": "what-to-order", "question": "What should we order this week, and from which supplier?", "expected_tools": ["get_inventory_recommendations"]}
+{"id": "failing-parts", "question": "Which parts are failing more than expected, and from which supplier?", "expected_tools": ["get_component_failures"]}
+{"id": "booked-next-three-months", "question": "How much of the next three months is already booked, by model?", "expected_tools": ["get_demand_forecast"]}
+{"id": "tx400-forecast", "question": "What is the demand forecast for TX-400?", "expected_tools": ["get_demand_forecast"]}
+{"id": "supplier-e-pumps", "question": "How often do parts from Supplier E fail?", "expected_tools": ["get_component_failures"]}
+{"id": "pipeline-short", "question": "How many orders in the production pipeline are short of parts?", "expected_tools": ["list_customer_orders"]}
+{"id": "weekly-summary", "question": "Give me this week's summary", "expected_tools": ["get_weekly_brief"]}
+{"id": "draft-reorder", "question": "Draft orders for everything we should reorder", "expected_tools": ["get_inventory_recommendations", "propose_supply_order"]}
+{"id": "excess-stock", "question": "Which parts carry excess stock?", "expected_tools": ["get_inventory_recommendations"]}
+{"id": "headline-status", "question": "Where do things stand?", "expected_tools": ["get_overview"]}

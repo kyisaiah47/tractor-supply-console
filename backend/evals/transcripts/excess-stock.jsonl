@@ -1,0 +1,6 @@
+{"model": "rules", "provider": "offline", "type": "meta"}
+{"id": "call_1", "input": {"action": "excess"}, "name": "get_inventory_recommendations", "type": "tool_call"}
+{"id": "call_1", "name": "get_inventory_recommendations", "ok": true, "result": {"metrics": {"holdingRate": 0.2379, "inflation": 3.79, "reviewMonths": 1, "serviceLevel": 0.95}, "rows": [], "summary": {"excess": 0, "spend": 46813063, "toOrder": 14}}, "type": "tool_result"}
+{"text": "Nothing matches that ", "type": "text"}
+{"text": "filter.", "type": "text"}
+{"type": "done"}

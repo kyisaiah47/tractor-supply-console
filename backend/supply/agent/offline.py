@@ -12,6 +12,24 @@ from .tools import execute_tool
 
 Event = dict[str, Any]
 
+# The first rule whose keywords appear in the question picks the tool. Order matters: "Which parts
+# from which supplier are failing?" is about failures, and "Which supply orders will arrive late?"
+# is about delays, not reordering. The eval golden set (evals/) checks these choices.
+INTENTS = [
+    ("forecast", r"forecast|demand|booked|how many tractors|next (year|month|quarter)|next (three|3|six|6|twelve|12) months"),
+    ("failures", r"fail|broken|defect|quality|break"),
+    ("customer_orders", r"pipeline|backlog|customer"),
+    ("delays", r"delay|late|on.time|arriv|runs out|slow|fast"),
+    ("inventory", r"order|reorder|inventory|stock|buy|excess|short"),
+    ("delays", r"supplier"),
+    ("brief", r"brief|summary|week|overview|status|what.*(happen|going)"),
+]
+
+
+def intent_of(question: str) -> str:
+    t = question.lower()
+    return next((name for name, pattern in INTENTS if re.search(pattern, t)), "overview")
+
 
 def pct(x: float) -> str:
     return f"{x * 100:.1f}%"
@@ -49,13 +67,14 @@ def run_offline(history: list[dict], pause: float = 0.012) -> Iterator[Event]:
     model = next((m for m in MODEL_CODES if m.lower() in t), None)
     letter = re.search(r"supplier\s+([a-e])\b", t)
     supplier = f"Supplier {letter.group(1).upper()}" if letter else None
+    intent = intent_of(question)
     ev: list[Event] = []
 
     def flush() -> Iterator[Event]:
         yield from ev
         ev.clear()
 
-    if re.search(r"forecast|demand|how many tractors|next (year|month|quarter)", t):
+    if intent == "forecast":
         r = _call("get_demand_forecast", {"tractor_model": model} if model else {}, ev)
         yield from flush()
         lines = [
@@ -69,7 +88,7 @@ def run_offline(history: list[dict], pause: float = 0.012) -> Iterator[Event]:
             pause,
         )
         return
-    if re.search(r"supplier|delay|late|on.time|arriv", t):
+    if intent == "delays":
         r = _call("get_supplier_delays", {"supplier": supplier} if supplier else {}, ev)
         yield from flush()
         table = [
@@ -89,7 +108,7 @@ def run_offline(history: list[dict], pause: float = 0.012) -> Iterator[Event]:
             pause,
         )
         return
-    if re.search(r"fail|broken|defect|quality|break", t):
+    if intent == "failures":
         filters = {**({"tractor_model": model} if model else {}), **({"supplier": supplier} if supplier else {})}
         r = _call("get_component_failures", filters, ev)
         yield from flush()
@@ -109,7 +128,7 @@ def run_offline(history: list[dict], pause: float = 0.012) -> Iterator[Event]:
             pause,
         )
         return
-    if re.search(r"order|reorder|inventory|stock|buy|excess|short", t) and "customer" not in t:
+    if intent == "inventory":
         action = "excess" if "excess" in t else "order"
         r = _call("get_inventory_recommendations", {"action": action, **({"tractor_model": model} if model else {})}, ev)
         yield from flush()
@@ -139,7 +158,7 @@ def run_offline(history: list[dict], pause: float = 0.012) -> Iterator[Event]:
             yield from flush()
             yield from _say("\n\nI drafted these orders. Press Confirm to queue them.", pause)
         return
-    if re.search(r"pipeline|backlog|customer|orders?", t):
+    if intent == "customer_orders":
         tab = "backlog" if re.search(r"backlog|12|year", t) else "pipeline"
         r = _call(
             "list_customer_orders",
@@ -154,7 +173,7 @@ def run_offline(history: list[dict], pause: float = 0.012) -> Iterator[Event]:
             pause,
         )
         return
-    if re.search(r"brief|summary|week|overview|status|what.*(happen|going)", t):
+    if intent == "brief":
         r = _call("get_weekly_brief", {}, ev)
         yield from flush()
         yield from _say(r["body"] if r else "No weekly brief yet.", pause)
