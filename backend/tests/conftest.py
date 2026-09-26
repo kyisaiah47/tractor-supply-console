@@ -15,7 +15,7 @@ import psycopg
 import pytest
 
 TEST_AS_OF = "2026-09-23"
-_base = os.environ.get("DATABASE_URL") or "postgres://supply:supply@localhost:5434/supply"
+_base = os.environ.get("DATABASE_URL") or "postgres://supply:supply@localhost:5433/supply"
 _parts = urlsplit(_base)
 TEST_DB = "supply_test"
 os.environ["DATABASE_URL"] = urlunsplit(_parts._replace(path=f"/{TEST_DB}"))

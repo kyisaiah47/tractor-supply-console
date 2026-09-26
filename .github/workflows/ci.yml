@@ -15,12 +15,12 @@ jobs:
           POSTGRES_USER: supply
           POSTGRES_PASSWORD: supply
           POSTGRES_DB: supply
-        ports: ["5434:5432"]
+        ports: ["5433:5432"]
         options: >-
           --health-cmd "pg_isready -U supply -d supply"
           --health-interval 2s --health-timeout 3s --health-retries 30
     env:
-      DATABASE_URL: postgres://supply:supply@localhost:5434/supply
+      DATABASE_URL: postgres://supply:supply@localhost:5433/supply
       # No paid model is ever called in CI: the assistant and the brief run offline.
       LLM_PROVIDER: offline
     defaults:

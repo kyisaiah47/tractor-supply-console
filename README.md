@@ -32,7 +32,7 @@ You need Node 20 or newer, [uv](https://docs.astral.sh/uv/) and Docker for Postg
 cp .env.example .env
 npm install
 uv --directory backend sync
-npm run db:up        # Postgres 16 in Docker, on port 5434
+npm run db:up        # Postgres 16 in Docker, on port 5433
 npm run db:setup     # generates the dataset, loads it, runs the four models
 npm run dev          # the API on :8000, the supply order worker, and the app on http://localhost:3000
 ```

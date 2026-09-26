@@ -10,13 +10,13 @@ x-backend-env: &backend-env
 services:
   db:
     image: postgres:16-alpine
-    container_name: tractor-supply-console-db
+    container_name: tractor-supply-db
     environment:
       POSTGRES_USER: supply
       POSTGRES_PASSWORD: supply
       POSTGRES_DB: supply
     ports:
-      - "5434:5432"
+      - "5433:5432"
     volumes:
       - tractor-supply-pg:/var/lib/postgresql/data
     healthcheck:
