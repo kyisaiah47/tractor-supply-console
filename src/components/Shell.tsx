@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { LocalTime } from "./LocalTime";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ListChecks, ChartLine, Truck, PlusCircle } from "@phosphor-icons/react";
 import { Mark } from "./Mark";
 import { ChatDock } from "./ChatDock";
 import { NewOrderModal } from "./NewOrderModal";
-import { day, stamp } from "@/lib/format";
+import { day } from "@/lib/format";
 import { useLocalFlag } from "@/lib/useNow";
 
 const NAV = [
@@ -45,7 +46,7 @@ export function Shell(props: { children: React.ReactNode; asOf: string; modelsRa
           <i className="dot" />
           Planning date {day(props.asOf)}
         </div>
-        <div className="live dim-live">Forecasts updated {stamp(props.modelsRanAt)}</div>
+        <div className="live dim-live">Forecasts updated <LocalTime iso={props.modelsRanAt} /></div>
         <button className="btn primary" onClick={() => setNewOrder(true)}>
           <PlusCircle size={16} />
           New order

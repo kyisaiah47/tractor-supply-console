@@ -1,7 +1,8 @@
 import { api, apiOrNull } from "@/lib/api";
+import { LocalTime } from "@/components/LocalTime";
 import type { Brief, OrdersData, Overview } from "@/lib/types";
 import { OrdersConsole } from "@/components/OrdersConsole";
-import { n0, stamp } from "@/lib/format";
+import { n0 } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function Home() {
           <summary>
             <span className="label">Weekly brief</span>
             <span className="dim">
-              updated {stamp(brief.generated_at)}
+              updated <LocalTime iso={brief.generated_at} />
             </span>
           </summary>
           <div className="brief">

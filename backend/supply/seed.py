@@ -9,6 +9,7 @@ first weekly brief is written.
 
 import csv
 import json
+import os
 import time
 from pathlib import Path
 
@@ -119,3 +120,23 @@ def seed(generated_dir: Path | None = None, run_models: bool = True) -> None:
         t0 = time.perf_counter()
         brief = run_weekly_job(use_llm=False, as_of=meta["asOf"])
         print(f"  ran 4 models and wrote the weekly brief in {(time.perf_counter() - t0) * 1000:.0f} ms ({brief['author']})")
+
+
+def init() -> None:
+    """Migrate, then generate and seed only if the database holds no data. A restart keeps its orders.
+
+    The generated files are rebuilt when they are missing, from the planning date the database was
+    seeded with, so the API and the worker read the same planning date as the data.
+    """
+    from .db import one
+    from .generate import generate
+
+    migrate()
+    seeded = one("SELECT (SELECT COUNT(*) FROM customers) AS customers, (SELECT MAX(as_of)::text FROM model_runs) AS as_of")
+    if seeded and seeded["customers"]:
+        print(f"  database already set up, planning date {seeded['as_of']}")
+        if not (GENERATED_DIR / "meta.json").exists() and seeded["as_of"]:
+            generate(seeded["as_of"])
+        return
+    generate(os.environ.get("APP_AS_OF") or None)
+    seed()

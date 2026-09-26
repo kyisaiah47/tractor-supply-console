@@ -3,6 +3,7 @@
 generate   rebuild data/generated/ from data/market_signals.csv
 seed       rebuild the schema, load both datasets, run the models, write the first brief
 setup      generate, then seed
+init       migrate, and set up only a database that has no data yet (the Docker setup step)
 migrate    apply the Alembic migrations
 weekly     run the weekly job: the four models, then the weekly brief
 worker     run the supply order worker
@@ -21,6 +22,7 @@ def main(argv: list[str] | None = None) -> None:
     s = sub.add_parser("seed")
     s.add_argument("--no-models", action="store_true", help="load the data without running the models")
     sub.add_parser("setup")
+    sub.add_parser("init")
     sub.add_parser("migrate")
     w = sub.add_parser("weekly")
     w.add_argument("--no-llm", action="store_true", help="write the template brief without calling a model")
@@ -39,6 +41,10 @@ def main(argv: list[str] | None = None) -> None:
         from .seed import seed
 
         seed(run_models=not getattr(a, "no_models", False))
+    elif a.cmd == "init":
+        from .seed import init
+
+        init()
     elif a.cmd == "migrate":
         from .seed import migrate
 

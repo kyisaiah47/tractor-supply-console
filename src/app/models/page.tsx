@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { LocalTime } from "@/components/LocalTime";
 import { apiOrNull } from "@/lib/api";
 import type { LlmUsage, ModelSpec, ModelsData } from "@/lib/types";
 import { DemandView } from "@/components/models/DemandView";
 import { StrategyView } from "@/components/models/StrategyView";
 import { RunWeeklyButton } from "@/components/models/RunWeeklyButton";
-import { CANDIDATE_LABEL, day, dayShort, n0, pct, stamp } from "@/lib/format";
+import { CANDIDATE_LABEL, day, dayShort, n0, pct } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,7 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
           ))}
         </nav>
         <span className="meta mono dim" style={{ fontSize: 12 }}>
-          updated {stamp(runs.ranAt)}, planning date {day(runs.asOf)}
+          updated <LocalTime iso={runs.ranAt} />, planning date {day(runs.asOf)}
         </span>
         <span className="toolbar-right">
           <RunWeeklyButton />

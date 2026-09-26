@@ -16,7 +16,7 @@ GENERATED_DIR = DATA_DIR / "generated"
 
 
 def database_url() -> str:
-    url = os.environ.get("DATABASE_URL") or "postgres://supply:supply@localhost:5433/supply"
+    url = os.environ.get("DATABASE_URL") or "postgres://supply:supply@localhost:5434/supply"
     for prefix in ("postgres://", "postgresql://"):
         if url.startswith(prefix):
             return "postgresql+psycopg://" + url[len(prefix) :]

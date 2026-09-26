@@ -1,13 +1,22 @@
+# The whole stack: Postgres, a one-off setup step, the API, the supply order worker and the web UI.
+#   docker compose up --build      then open http://localhost:3000
+# `npm run db:up` starts only Postgres, for running the API, worker and UI on the host instead.
+# Settings come from the shell or from .env beside this file. With no model key the assistant runs offline.
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgres://supply:supply@db:5432/supply
+  APP_AS_OF: ${APP_AS_OF:-}
+
 services:
   db:
     image: postgres:16-alpine
-    container_name: tractor-supply-db
+    container_name: tractor-supply-console-db
     environment:
       POSTGRES_USER: supply
       POSTGRES_PASSWORD: supply
       POSTGRES_DB: supply
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - tractor-supply-pg:/var/lib/postgresql/data
     healthcheck:
@@ -16,5 +25,68 @@ services:
       timeout: 3s
       retries: 30
 
+  # Migrates the schema, and on an empty database generates the dataset, loads it and runs the models.
+  setup:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    image: tractor-supply-api
+    command: ["supply", "init"]
+    environment:
+      <<: *backend-env
+    volumes:
+      - generated:/app/data/generated
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    image: tractor-supply-api
+    environment:
+      <<: *backend-env
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-5}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-flash-latest}
+      GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-gemini-3-flash-preview,gemini-3.1-flash-lite}
+      MOCK_SUPPLIER_LATENCY_MS: ${MOCK_SUPPLIER_LATENCY_MS:-0}
+    volumes:
+      - generated:/app/data/generated
+    ports:
+      - "8000:8000"
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    environment:
+      <<: *backend-env
+      API_URL: http://api:8000
+    volumes:
+      - generated:/app/data/generated
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      args:
+        API_URL: http://api:8000
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   tractor-supply-pg:
+  generated:
