@@ -81,7 +81,8 @@ def place_order(slug: str, sku: str, quantity: int, idempotency_key: str | None)
         if (stored["supplier"], stored["sku"], stored["quantity"]) != (s["code"], sku, quantity):
             raise KeyReused(f"Idempotency-Key {key} was already used for a different order")
         return stored["response"], True
-    qt = quote(slug, sku, quantity, "order")
+    # Salted per call, so each try is its own 1-in-12 chance of a 503, as with a real flaky API.
+    qt = quote(slug, sku, quantity, f"order|{key}|{time.time_ns()}")
     if not qt:
         return None, False
     time.sleep(int(os.environ.get("MOCK_SUPPLIER_LATENCY_MS") or 0) / 1000)
