@@ -8,7 +8,7 @@ The backend is Python: FastAPI, Pydantic, SQLAlchemy on psycopg 3, Alembic and p
 
 **Demo video (under a minute):** it walks through the orders pipeline, ordering parts for selected orders, the weekly brief, the planning assistant drafting an order, each model, the supply order queue and recording a new order.
 
-[![Demo video](https://i.ytimg.com/vi/hRGQxR8rd-8/hqdefault.jpg)](https://youtu.be/hRGQxR8rd-8)
+<a href="https://youtu.be/hRGQxR8rd-8"><img src="https://i.ytimg.com/vi/hRGQxR8rd-8/maxresdefault.jpg" alt="Demo video" width="100%"></a>
 
 ## Run it locally
 
