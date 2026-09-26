@@ -242,7 +242,8 @@ tests/                        model and unit tests
 
 ## What I would do next in production
 
-- Replace the mock supplier APIs with real supplier integrations, and add idempotency keys to supply order placement.
+- Replace the mock supplier APIs with real supplier integrations.
+- Move the supply order queue from Postgres to Amazon SQS. The Postgres queue fits one consumer at this volume, because an order and its job are written in one transaction. In production I would use SQS for its visibility timeout, dead-letter queue and autoscaling consumers. I would add an outbox so an order and its message stay consistent. If more consumers needed the same events, I would publish through SNS to one SQS queue per consumer.
 - Run the weekly job on a scheduler and keep every model run, so forecast accuracy can be tracked over time.
 - Add sign-in and roles, so only planners can confirm supply orders.
 - Retrain the failure model on field warranty claims as well as receiving and assembly data.
