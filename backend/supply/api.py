@@ -3,23 +3,27 @@
 Bodies are validated with Pydantic. A bad request returns 400 with the issues, as before.
 """
 
+import json
 import re
 import time
+from collections.abc import Iterator
 from datetime import date
 from typing import Annotated, Any, Literal
 
 from fastapi import Body, FastAPI, Header, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy.orm import Session
 
 from . import queries
+from .agent.run import run_agent
 from .catalog import MODEL_CODES, WAREHOUSE_CODES
 from .config import as_of
 from .db import one, rows
 from .idempotency import Outcome, run_idempotent
+from .llm import usage_summary
 from .mock_suppliers import KeyReused, SupplierUnavailable, place_order, quote
 from .models import MODEL_NAMES, MODEL_SPECS, latest_runs
 from .orm import CustomerOrder
@@ -227,6 +231,42 @@ def post_supply_orders(raw: Annotated[Any, Body()] = None, idempotency_key: Idem
             return Outcome(400, {"error": str(e)})
 
     return outcome_response(run_idempotent(idempotency_key, "POST /api/supply-orders", body.model_dump(), write))
+
+
+# ---- the planning assistant ---------------------------------------------------------------
+
+
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=8000)
+
+
+class ChatBody(BaseModel):
+    messages: list[ChatTurn] = Field(min_length=1, max_length=40)
+
+
+@app.post("/api/chat")
+def post_chat(body: ChatBody) -> Response:
+    """The assistant. Streams newline-delimited JSON events: meta, text, tool_call, tool_result, done, error."""
+    history = [m.model_dump() for m in body.messages if m.content.strip()]
+    if not history or history[0]["role"] != "user":
+        return error(400, "The first message must be from the user")
+
+    def lines() -> Iterator[str]:
+        for ev in run_agent(history):
+            yield json.dumps(ev, default=str) + "\n"
+
+    return StreamingResponse(
+        lines(),
+        media_type="application/x-ndjson; charset=utf-8",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/api/llm-calls")
+def get_llm_calls() -> dict:
+    """Language model use: totals, per model, and the latest calls, with tokens, latency and cost."""
+    return usage_summary()
 
 
 # ---- models, the weekly job and the brief -------------------------------------------------

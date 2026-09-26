@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { apiOrNull } from "@/lib/api";
-import type { ModelSpec, ModelsData } from "@/lib/types";
+import type { LlmUsage, ModelSpec, ModelsData } from "@/lib/types";
 import { DemandView } from "@/components/models/DemandView";
 import { StrategyView } from "@/components/models/StrategyView";
 import { RunWeeklyButton } from "@/components/models/RunWeeklyButton";
@@ -44,7 +44,7 @@ const TABS = [
 export default async function ModelsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab: tabParam } = await searchParams;
   const tab = TABS.some((t) => t.key === tabParam) ? tabParam : "demand";
-  const runs = await apiOrNull<ModelsData>("/api/models");
+  const [runs, llm] = await Promise.all([apiOrNull<ModelsData>("/api/models"), apiOrNull<LlmUsage>("/api/llm-calls")]);
   if (!runs) {
     return (
       <div className="empty">
@@ -75,6 +75,22 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
           <RunWeeklyButton />
         </span>
       </div>
+
+      {llm && (
+        <div className="ctl-row llm-usage" aria-label="Language model use">
+          <span className="label">Language model</span>
+          <span className="mono dim">
+            {llm.provider === "offline"
+              ? "The assistant and the weekly brief run offline, from the console's own data. No model calls are made."
+              : `The assistant runs on ${llm.provider} ${llm.model}.`}{" "}
+            {llm.totals.calls
+              ? `${n0(llm.totals.calls)} model calls so far: ${n0(llm.totals.input_tokens)} tokens in, ${n0(llm.totals.output_tokens)} out, ` +
+                `$${llm.totals.cost_usd.toFixed(2)} in total, ${n0(llm.totals.avg_latency_ms)} ms on average` +
+                (llm.totals.errors ? `, ${llm.totals.errors} failed.` : ".")
+              : ""}
+          </span>
+        </div>
+      )}
 
       {tab === "demand" && (
       <section className="model-band" id="demand">

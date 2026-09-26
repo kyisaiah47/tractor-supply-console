@@ -157,3 +157,17 @@ export type ModelsData = {
 };
 
 export type SupplySummary = { console: Record<string, number>; history: { placed: number; fulfilled: number } };
+
+export type LlmUsage = {
+  provider: string;
+  model: string;
+  totals: {
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+    cost_usd: number;
+    avg_latency_ms: number;
+    avg_tool_rounds: number;
+    errors: number;
+  };
+};
