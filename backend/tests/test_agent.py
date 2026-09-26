@@ -280,3 +280,12 @@ def test_the_llm_calls_readout_sums_the_calls(no_llm_calls):
     assert body["totals"]["calls"] == 1 and body["totals"]["input_tokens"] == 1000
     assert body["totals"]["cost_usd"] == pytest.approx((1000 * 5 + 200 * 25) / 1e6)
     assert body["recent"][0]["request_id"] == "req_x"
+
+
+def test_keyword_mode_drafts_the_number_of_parts_asked_for():
+    from supply.agent.offline import count_in
+
+    assert count_in("draft the three most urgent") == 3
+    assert count_in("show the top 5") == 5
+    assert count_in("what is booked in the 12 months ahead") is None
+    assert count_in("order everything") is None

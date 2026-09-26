@@ -129,7 +129,7 @@ The tests check that the models find all four, and that they do not flag parts t
 
 ## The four models
 
-Every model is scored on data it did not see, against a simple baseline. The statistics come from libraries: statsmodels for the regressions, SciPy for distributions and quantiles, scikit-learn for the error metrics, and pandas and NumPy for the data. The figures below come from a run with planning date 23 Sep 2026. They change slightly with the planning date.
+Every model is scored on data it did not see, against a simple baseline. The statistics come from libraries: statsmodels for the regressions, SciPy for distributions and quantiles, scikit-learn for the error metrics, and pandas and NumPy for the data. The figures below come from a run with planning date 26 Sep 2026. They change slightly with the planning date.
 
 ### 1. Demand fluctuations
 
@@ -141,10 +141,10 @@ Every model is scored on data it did not see, against a simple baseline. The sta
 
 | Method | Average miss |
 |---|---|
-| Trend, season and market data (used) | 17.3% |
-| Same month last year | 20.6% |
-| Trend and season | 21.2% |
-| Last 12 months' average | 21.3% |
+| Trend, season and market data (used) | 17.4% |
+| Same month last year | 20.8% |
+| Trend and season | 20.9% |
+| Last 12 months' average | 21.1% |
 
 Market inputs for future months are unknown, so the backtest holds them at their trailing 12-month average, the same as the live forecast does.
 
@@ -153,23 +153,23 @@ Market inputs for future months are unknown, so the backtest holds them at their
 - **Predicts:** how many days late each supplier delivers by quarter, and the chance each open supply order arrives after its part runs out.
 - **Data sources:** promised and delivered dates on past supply orders, the dataset's supplier delays as a baseline, and stock with the production schedule for the date each part runs out.
 - **Method:** a statsmodels OLS regression of days late on supplier, quarter and their interaction. The chance of being late comes from each supplier's real spread of delays, through SciPy's empirical distribution. A mixed model that pulls each quarter toward its supplier's average was also tried. Every supplier and quarter has about 100 or more orders, so pooling barely changed the estimates, and on some planning dates it shrank Supplier D's real Q4 slowdown by a third.
-- **Result:** on 578 supply orders from the last year, the model misses by 7.27 days on average. The overall average misses by 7.69 days, and the dataset's per-supplier average misses by 7.74.
-- It finds Supplier B at 8.7 days late (the dataset says 14.7) and Supplier D at 19.0 days in Q4 (14.1 to 15.2 in other quarters).
+- **Result:** on 562 supply orders from the last year, the model misses by 7.21 days on average. The overall average misses by 7.55 days, and the dataset's per-supplier average misses by 7.60.
+- It finds Supplier B at 9.1 days late (the dataset says 14.7) and Supplier D at 18.5 days in Q4 (13.0 to 14.7 in other quarters).
 
 ### 3. Component failures
 
 - **Predicts:** the failure rate of every part from every supplier, and how many parts in the next three months of builds will break.
 - **Data sources:** received lots with broken counts and where the failure was found, and the dataset's failure rate per model as the starting point.
 - **Method:** each rate starts at the dataset's rate and moves toward the supplier's own record as parts are received: a beta-binomial model with the dataset rate as the prior, computed with SciPy's beta distribution. A part is flagged when even the low end of its exact 90% range is 25% above the dataset rate. Lots received in the last 120 days are left out because they have not had time to fail.
-- **Result:** on 115 part and supplier pairs from the last year, the model misses by 4.69 broken parts per pair. The dataset rate misses by 5.27.
-- It flags all five Supplier E hydraulic pumps (9.4% to 12.0% against about 5%) and the TX-400 transmissions (7.6% to 8.8%). It flags nothing else.
+- **Result:** on 113 part and supplier pairs from the last year, the model misses by 4.51 broken parts per pair. The dataset rate misses by 4.89.
+- It flags all five Supplier E hydraulic pumps (9.6% to 11.1% against about 5%) and the TX-400 transmissions from Supplier B and Supplier C (9.2% and 8.3%). It flags nothing else.
 
 ### 4. Cost-effective inventory strategy
 
 - **Predicts:** for every part, whether to order now, how many, and from which supplier.
 - **Data sources:** the other three models, stock on hand and on order, supplier prices and lead times, and the dataset's inflation.
 - **Method:** a reorder-point policy at a 95% service level, with the z value from SciPy's normal distribution. Lead time is the supplier's quoted lead time plus its expected delay, and the delay spread counts as lead-time risk. Quantities are raised to cover expected failures. The supplier is the cheapest after pricing in its failures and delays. Holding cost is 20% of the price per year plus inflation.
-- **Result:** it never picks Supplier E for hydraulic pumps. Every order it recommends brings stock back above the reorder point. On the run above it recommends 14 orders for $46,813,063.
+- **Result:** it never picks Supplier E for hydraulic pumps. Every order it recommends brings stock back above the reorder point. On the run above it recommends 16 orders for $45,527,224.
 
 ![Models](docs/screenshots/forecasts.png)
 
@@ -288,12 +288,12 @@ src/components/               the console UI
 
 ## Tests
 
-`npm test` runs 68 pytest tests. 48 are in `backend/tests`:
+`npm test` runs 69 pytest tests. 49 are in `backend/tests`:
 
 - 9 check that each model beats its baseline and finds each planted effect.
 - 20 cover the API: every read route, bad requests, and idempotency, including six requests sent at once with one key.
 - 7 cover the worker: the saved supplier, a supplier the person confirmed, one supplier order when a job runs twice, a worker killed after the supplier accepted, the fencing of a stale lease, and the dead-letter state.
-- 7 cover the assistant: the tool loop, token and cost recording and the 429 fallbacks against recorded Claude and Gemini streams, plus the keyword mode, the streamed events of a draft that orders nothing, input checks and the usage readout.
+- 8 cover the assistant: the tool loop, token and cost recording and the 429 fallbacks against recorded Claude and Gemini streams, plus the keyword mode and the count it drafts, the streamed events of a draft that orders nothing, input checks and the usage readout.
 - 5 cover the generator's determinism, one brief per week, the stock-out calculation and the failure intervals.
 
 The other 20 are the eval golden set and its checks. The tests generate and seed their own database at a fixed planning date, and they call no model: both API keys are blanked. CI runs ruff, mypy and pytest for the backend, and lint, typecheck and a production build for the web app, on every push.

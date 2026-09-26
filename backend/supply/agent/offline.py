@@ -31,6 +31,20 @@ def intent_of(question: str) -> str:
     return next((name for name, pattern in INTENTS if re.search(pattern, t)), "overview")
 
 
+NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+
+
+def count_in(text: str) -> int | None:
+    """A count the question asks for, as in "the three most urgent" or "top 5"."""
+    m = re.search(
+        r"\b(top|the|first)\s+(\d{1,2}|" + "|".join(NUMBER_WORDS) + r")\b(?!\s*(?:months?|weeks?|days?|years?|quarters?)\b)", text
+    )
+    if not m:
+        return None
+    n = NUMBER_WORDS.get(m.group(2)) or int(m.group(2))
+    return n if n > 0 else None
+
+
 def pct(x: float) -> str:
     return f"{x * 100:.1f}%"
 
@@ -132,10 +146,14 @@ def run_offline(history: list[dict], pause: float = 0.012) -> Iterator[Event]:
         action = "excess" if "excess" in t else "order"
         r = _call("get_inventory_recommendations", {"action": action, **({"tractor_model": model} if model else {})}, ev)
         yield from flush()
+        rows = r["rows"]
+        if "urgent" in t:
+            rows = sorted(rows, key=lambda x: (x["daysOfCover"] is None, x["daysOfCover"] or 0))
+        rows = rows[: count_in(t) or 10]
         table = [
             f"| {x['sku']} | {x['quantity']} | {x['supplier']} | {usd(x['spend'])} | "
             f"{x['daysOfCover'] if x['daysOfCover'] is not None else '-'} |"
-            for x in r["rows"][:10]
+            for x in rows
         ]
         yield from _say(
             (
@@ -150,7 +168,7 @@ def run_offline(history: list[dict], pause: float = 0.012) -> Iterator[Event]:
             _call(
                 "propose_supply_order",
                 {
-                    "lines": [{"sku": x["sku"], "quantity": x["quantity"], "supplier": x["supplier"]} for x in r["rows"][:10]],
+                    "lines": [{"sku": x["sku"], "quantity": x["quantity"], "supplier": x["supplier"]} for x in rows],
                     "reason": "Parts below their reorder point, from the inventory strategy model.",
                 },
                 ev,
