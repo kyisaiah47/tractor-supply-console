@@ -36,8 +36,8 @@ def as_of() -> str:
     return os.environ.get("APP_AS_OF") or read_meta().get("asOf") or date.today().isoformat()
 
 
-# Base URL the worker uses to reach the mock supplier APIs, which the API service serves.
-API_URL = os.environ.get("API_URL") or os.environ.get("APP_URL") or "http://localhost:8000"
+# The API service's base URL. The worker calls the mock supplier APIs there directly.
+API_URL = os.environ.get("API_URL") or "http://localhost:8000"
 
 
 def gemini_models() -> list[str]:

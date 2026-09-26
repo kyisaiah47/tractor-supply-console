@@ -6,7 +6,7 @@
     "dev": "concurrently -n api,worker,web -c yellow,magenta,cyan --kill-others-on-fail \"npm run api\" \"npm run worker\" \"next dev\"",
     "dev:web": "next dev",
     "api": "uv --directory backend run supply serve --reload",
-    "worker": "tsx scripts/worker.ts",
+    "worker": "uv --directory backend run supply worker",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
