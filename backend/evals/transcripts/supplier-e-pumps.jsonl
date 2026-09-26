@@ -1,0 +1,30 @@
+{"model": "rules", "provider": "offline", "type": "meta"}
+{"id": "call_1", "input": {"supplier": "Supplier E"}, "name": "get_component_failures", "type": "tool_call"}
+{"id": "call_1", "name": "get_component_failures", "ok": true, "result": {"backtest": {"dataset_rate_mae_units": 5.27, "model_mae_units": 4.69, "test_pairs": 115}, "expectedBrokenInPipeline": 942, "rows": [{"broken": 244, "category": "Hydraulic pump", "elevated": true, "hi": 0.1312, "lift": 2.34, "lo": 0.1085, "prior": 0.0512, "rate": 0.1197, "sku": "HYD-400", "stages": {"assembly": 153, "field": 17, "receiving": 74}, "supplier": "Supplier E", "tractorModel": "TX-400", "units": 1810}, {"broken": 276, "category": "Hydraulic pump", "elevated": true, "hi": 0.1258, "lift": 2.29, "lo": 0.1051, "prior": 0.0504, "rate": 0.1153, "sku": "HYD-200", "stages": {"assembly": 110, "field": 61, "receiving": 105}, "supplier": "Supplier E", "tractorModel": "TX-200", "units": 2169}, {"broken": 297, "category": "Hydraulic pump", "elevated": true, "hi": 0.1202, "lift": 2.23, "lo": 0.101, "prior": 0.0496, "rate": 0.1104, "sku": "HYD-100", "stages": {"assembly": 70, "field": 42, "receiving": 185}, "supplier": "Supplier E", "tractorModel": "TX-100", "units": 2469}, {"broken": 225, "category": "Hydraulic pump", "elevated": true, "hi": 0.115, "lift": 2.08, "lo": 0.0943, "prior": 0.0502, "rate": 0.1045, "sku": "HYD-300", "stages": {"assembly": 37, "field": 117, "receiving": 71}, "supplier": "Supplier E", "tractorModel": "TX-300", "units": 1946}, {"broken": 133, "category": "Hydraulic pump", "elevated": true, "hi": 0.1063, "lift": 1.91, "lo": 0.0825, "prior": 0.0493, "rate": 0.0941, "sku": "HYD-500", "stages": {"assembly": 26, "field": 74, "receiving": 33}, "supplier": "Supplier E", "tractorModel": "TX-500", "units": 1223}, {"broken": 133, "category": "Transmission", "elevated": true, "hi": 0.0891, "lift": 1.54, "lo": 0.069, "prior": 0.0512, "rate": 0.0788, "sku": "TRN-400", "stages": {"assembly": 18, "field": 65, "receiving": 50}, "supplier": "Supplier E", "tractorModel": "TX-400", "units": 1548}]}, "type": "tool_result"}
+{"text": "These parts fail well ", "type": "text"}
+{"text": "above the market rate:\n\n", "type": "text"}
+{"text": "| Part | Category | ", "type": "text"}
+{"text": "Supplier | Rate | ", "type": "text"}
+{"text": "Expected | Units seen |\n", "type": "text"}
+{"text": "|---|---|---|---|---|---|", "type": "text"}
+{"text": "\n| HYD-400 | Hydraulic ", "type": "text"}
+{"text": "pump | Supplier E | ", "type": "text"}
+{"text": "12.0% | 5.1% | 1810 |\n| ", "type": "text"}
+{"text": "HYD-200 | Hydraulic pump ", "type": "text"}
+{"text": "| Supplier E | 11.5% | ", "type": "text"}
+{"text": "5.0% | 2169 |\n| HYD-100 ", "type": "text"}
+{"text": "| Hydraulic pump | ", "type": "text"}
+{"text": "Supplier E | 11.0% | ", "type": "text"}
+{"text": "5.0% | 2469 |\n| HYD-300 ", "type": "text"}
+{"text": "| Hydraulic pump | ", "type": "text"}
+{"text": "Supplier E | 10.4% | ", "type": "text"}
+{"text": "5.0% | 1946 |\n| HYD-500 ", "type": "text"}
+{"text": "| Hydraulic pump | ", "type": "text"}
+{"text": "Supplier E | 9.4% | 4.9% ", "type": "text"}
+{"text": "| 1223 |\n| TRN-400 | ", "type": "text"}
+{"text": "Transmission | Supplier ", "type": "text"}
+{"text": "E | 7.9% | 5.1% | 1548 |\n", "type": "text"}
+{"text": "\nAbout 942 parts in the ", "type": "text"}
+{"text": "next three months of ", "type": "text"}
+{"text": "builds will break.", "type": "text"}
+{"type": "done"}

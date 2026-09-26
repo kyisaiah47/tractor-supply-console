@@ -1,0 +1,45 @@
+{"model": "rules", "provider": "offline", "type": "meta"}
+{"id": "call_1", "input": {}, "name": "get_weekly_brief", "type": "tool_call"}
+{"id": "call_1", "name": "get_weekly_brief", "ok": true, "result": {"as_of": "2026-09-23", "author": "template", "body": "Demand: the forecast for Sep 26 to Aug 27 is 8,863 tractors, and 5,105 are already booked. Tested on the last two years, the forecast was off by 17.3% a month on average.\n\nSuppliers: Supplier D is the slowest at 15.9 days late on average, and Supplier B is the fastest at 8.7. 24 of 57 open supply orders will probably arrive after their part runs out.\n\nFailures: Hydraulic pump HYD-400 from Supplier E fails 12.0% against 5.1% expected; Hydraulic pump HYD-200 from Supplier E fails 11.5% against 5.0% expected; Hydraulic pump HYD-100 from Supplier E fails 11.0% against 5.0% expected; Hydraulic pump HYD-300 from Supplier E fails 10.4% against 5.0% expected. About 942 parts in the next three months of builds will break.\n\nInventory: 14 parts need an order now, for $46,813,063 in total. No part holds more than two months of stock above target. Order 194 ENG-300 from Supplier D first: 13 days of stock are left.", "facts": {"demand": {"backtestMape": 0.1733, "booked12": 5105, "chosenModel": "trend_seasonal_market", "forecast12": 8863, "next3": [{"booked": 369, "forecast": 404, "model": "TX-100"}, {"booked": 476, "forecast": 433, "model": "TX-200"}, {"booked": 374, "forecast": 456, "model": "TX-300"}, {"booked": 437, "forecast": 444, "model": "TX-400"}, {"booked": 393, "forecast": 404, "model": "TX-500"}]}, "failures": {"elevated": [{"category": "Hydraulic pump", "prior": 0.0512, "rate": 0.1197, "sku": "HYD-400", "supplier": "Supplier E"}, {"category": "Hydraulic pump", "prior": 0.0504, "rate": 0.1153, "sku": "HYD-200", "supplier": "Supplier E"}, {"category": "Hydraulic pump", "prior": 0.0496, "rate": 0.1104, "sku": "HYD-100", "supplier": "Supplier E"}, {"category": "Hydraulic pump", "prior": 0.0502, "rate": 0.1045, "sku": "HYD-300", "supplier": "Supplier E"}], "expectedBrokenInPipeline": 942}, "horizon": "Sep 26 to Aug 27", "inventory": {"excess": 0, "excessValue": 0, "mostUrgent": [{"daysOfCover": 13, "quantity": 194, "sku": "ENG-300", "supplier": "Supplier D"}, {"daysOfCover": 15, "quantity": 226, "sku": "PTO-200", "supplier": "Supplier D"}, {"daysOfCover": 16, "quantity": 205, "sku": "ECU-300", "supplier": "Supplier E"}], "spend": 46813063, "toOrder": 14}, "suppliers": {"fastest": {"byQuarter": [9.4, 8.7, 7.4, 9.2], "datasetMeanDelay": 14.7, "meanDelay": 8.7, "onTimeRate": 0.182, "orders": 488, "p90Delay": 16, "supplier": "Supplier B"}, "openAtRisk": 24, "openTotal": 57, "slowest": {"byQuarter": [14.1, 15.2, 15.1, 19.0], "datasetMeanDelay": 14.5, "meanDelay": 15.9, "onTimeRate": 0.128, "orders": 476, "p90Delay": 28, "supplier": "Supplier D"}}}, "generated_at": "2026-09-26T17:09:57.376879+00:00"}, "type": "tool_result"}
+{"text": "Demand: the forecast for ", "type": "text"}
+{"text": "Sep 26 to Aug 27 is ", "type": "text"}
+{"text": "8,863 tractors, and ", "type": "text"}
+{"text": "5,105 are already ", "type": "text"}
+{"text": "booked. Tested on the ", "type": "text"}
+{"text": "last two years, the ", "type": "text"}
+{"text": "forecast was off by ", "type": "text"}
+{"text": "17.3% a month on ", "type": "text"}
+{"text": "average.\n\nSuppliers: ", "type": "text"}
+{"text": "Supplier D is the ", "type": "text"}
+{"text": "slowest at 15.9 days ", "type": "text"}
+{"text": "late on average, and ", "type": "text"}
+{"text": "Supplier B is the ", "type": "text"}
+{"text": "fastest at 8.7. 24 of 57 ", "type": "text"}
+{"text": "open supply orders will ", "type": "text"}
+{"text": "probably arrive after ", "type": "text"}
+{"text": "their part runs out.\n\n", "type": "text"}
+{"text": "Failures: Hydraulic pump ", "type": "text"}
+{"text": "HYD-400 from Supplier E ", "type": "text"}
+{"text": "fails 12.0% against 5.1% ", "type": "text"}
+{"text": "expected; Hydraulic pump ", "type": "text"}
+{"text": "HYD-200 from Supplier E ", "type": "text"}
+{"text": "fails 11.5% against 5.0% ", "type": "text"}
+{"text": "expected; Hydraulic pump ", "type": "text"}
+{"text": "HYD-100 from Supplier E ", "type": "text"}
+{"text": "fails 11.0% against 5.0% ", "type": "text"}
+{"text": "expected; Hydraulic pump ", "type": "text"}
+{"text": "HYD-300 from Supplier E ", "type": "text"}
+{"text": "fails 10.4% against 5.0% ", "type": "text"}
+{"text": "expected. About 942 ", "type": "text"}
+{"text": "parts in the next three ", "type": "text"}
+{"text": "months of builds will ", "type": "text"}
+{"text": "break.\n\nInventory: 14 ", "type": "text"}
+{"text": "parts need an order now, ", "type": "text"}
+{"text": "for $46,813,063 in ", "type": "text"}
+{"text": "total. No part holds ", "type": "text"}
+{"text": "more than two months of ", "type": "text"}
+{"text": "stock above target. ", "type": "text"}
+{"text": "Order 194 ENG-300 from ", "type": "text"}
+{"text": "Supplier D first: 13 ", "type": "text"}
+{"text": "days of stock are left.", "type": "text"}
+{"type": "done"}

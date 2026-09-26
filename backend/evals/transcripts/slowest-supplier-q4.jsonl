@@ -1,0 +1,53 @@
+{"model": "rules", "provider": "offline", "type": "meta"}
+{"id": "call_1", "input": {}, "name": "get_supplier_delays", "type": "tool_call"}
+{"id": "call_1", "name": "get_supplier_delays", "ok": true, "result": {"backtest": {"dataset_supplier_mean_mae": 7.74, "model_mae": 7.27, "overall_mean_mae": 7.69, "test_orders": 578}, "openAtRisk": 24, "openOrders": [{"expectedArrival": "2026-10-11", "id": 2444, "lateRisk": 1.0, "needBy": "2026-09-17", "p90Arrival": "2026-10-23", "promised": "2026-09-26", "quantity": 140, "sku": "FAX-500", "supplier": "Supplier D", "tractorModel": "TX-500"}, {"expectedArrival": "2026-10-24", "id": 2459, "lateRisk": 1.0, "needBy": "2026-10-09", "p90Arrival": "2026-11-01", "promised": "2026-10-17", "quantity": 107, "sku": "TRN-300", "supplier": "Supplier B", "tractorModel": "TX-300"}, {"expectedArrival": "2026-11-01", "id": 2453, "lateRisk": 1.0, "needBy": "2026-10-04", "p90Arrival": "2026-11-13", "promised": "2026-10-17", "quantity": 117, "sku": "FAX-100", "supplier": "Supplier D", "tractorModel": "TX-100"}, {"expectedArrival": "2026-10-31", "id": 2458, "lateRisk": 1.0, "needBy": "2026-09-29", "p90Arrival": "2026-11-12", "promised": "2026-10-17", "quantity": 116, "sku": "ENG-300", "supplier": "Supplier A", "tractorModel": "TX-300"}, {"expectedArrival": "2026-11-01", "id": 2457, "lateRisk": 1.0, "needBy": "2026-10-15", "p90Arrival": "2026-11-13", "promised": "2026-10-17", "quantity": 127, "sku": "CAB-200", "supplier": "Supplier C", "tractorModel": "TX-200"}, {"expectedArrival": "2026-11-02", "id": 2454, "lateRisk": 1.0, "needBy": "2026-10-03", "p90Arrival": "2026-11-14", "promised": "2026-10-19", "quantity": 128, "sku": "ENG-200", "supplier": "Supplier A", "tractorModel": "TX-200"}, {"expectedArrival": "2026-11-04", "id": 2464, "lateRisk": 1.0, "needBy": "2026-09-30", "p90Arrival": "2026-11-16", "promised": "2026-10-20", "quantity": 109, "sku": "CAB-500", "supplier": "Supplier C", "tractorModel": "TX-500"}, {"expectedArrival": "2026-11-06", "id": 2462, "lateRisk": 1.0, "needBy": "2026-10-04", "p90Arrival": "2026-11-18", "promised": "2026-10-22", "quantity": 125, "sku": "TRN-400", "supplier": "Supplier C", "tractorModel": "TX-400"}, {"expectedArrival": "2026-11-05", "id": 2463, "lateRisk": 1.0, "needBy": "2026-10-10", "p90Arrival": "2026-11-17", "promised": "2026-10-22", "quantity": 114, "sku": "ENG-500", "supplier": "Supplier A", "tractorModel": "TX-500"}, {"expectedArrival": "2026-09-24", "id": 2442, "lateRisk": 0.82, "needBy": "2026-09-19", "p90Arrival": "2026-10-02", "promised": "2026-09-17", "quantity": 148, "sku": "TRN-500", "supplier": "Supplier B", "tractorModel": "TX-500"}, {"expectedArrival": "2026-10-08", "id": 2446, "lateRisk": 0.79, "needBy": "2026-09-30", "p90Arrival": "2026-10-20", "promised": "2026-09-23", "quantity": 154, "sku": "CAB-500", "supplier": "Supplier C", "tractorModel": "TX-500"}, {"expectedArrival": "2026-10-31", "id": 2456, "lateRisk": 0.79, "needBy": "2026-10-22", "p90Arrival": "2026-11-12", "promised": "2026-10-17", "quantity": 136, "sku": "FAX-200", "supplier": "Supplier A", "tractorModel": "TX-200"}, {"expectedArrival": "2026-11-01", "id": 2451, "lateRisk": 0.79, "needBy": "2026-10-23", "p90Arrival": "2026-11-13", "promised": "2026-10-18", "quantity": 134, "sku": "ENG-100", "supplier": "Supplier A", "tractorModel": "TX-100"}, {"expectedArrival": "2026-09-30", "id": 2447, "lateRisk": 0.77, "needBy": "2026-09-22", "p90Arrival": "2026-10-12", "promised": "2026-09-16", "quantity": 145, "sku": "ECU-500", "supplier": "Supplier A", "tractorModel": "TX-500"}, {"expectedArrival": "2026-10-05", "id": 2419, "lateRisk": 0.76, "needBy": "2026-09-28", "p90Arrival": "2026-10-17", "promised": "2026-09-20", "quantity": 187, "sku": "PTO-200", "supplier": "Supplier C", "tractorModel": "TX-200"}, {"expectedArrival": "2026-10-01", "id": 2445, "lateRisk": 0.71, "needBy": "2026-09-24", "p90Arrival": "2026-10-13", "promised": "2026-09-16", "quantity": 162, "sku": "RAX-500", "supplier": "Supplier D", "tractorModel": "TX-500"}, {"expectedArrival": "2026-10-05", "id": 2421, "lateRisk": 0.71, "needBy": "2026-09-29", "p90Arrival": "2026-10-17", "promised": "2026-09-21", "quantity": 172, "sku": "ENG-300", "supplier": "Supplier A", "tractorModel": "TX-300"}, {"expectedArrival": "2026-10-11", "id": 2404, "lateRisk": 0.71, "needBy": "2026-10-04", "p90Arrival": "2026-10-23", "promised": "2026-09-26", "quantity": 161, "sku": "FAX-100", "supplier": "Supplier D", "tractorModel": "TX-100"}, {"expectedArrival": "2026-10-30", "id": 2452, "lateRisk": 0.64, "needBy": "2026-10-26", "p90Arrival": "2026-11-12", "promised": "2026-10-17", "quantity": 121, "sku": "TRN-100", "supplier": "Supplier E", "tractorModel": "TX-100"}, {"expectedArrival": "2026-10-31", "id": 2460, "lateRisk": 0.64, "needBy": "2026-10-27", "p90Arrival": "2026-11-13", "promised": "2026-10-18", "quantity": 123, "sku": "CAB-300", "supplier": "Supplier E", "tractorModel": "TX-300"}], "suppliers": [{"byQuarter": [14.9, 16.2, 13.9, 15.6], "datasetMeanDelay": 14.8, "meanDelay": 15.1, "onTimeRate": 0.144, "orders": 494, "p90Delay": 27, "supplier": "Supplier A"}, {"byQuarter": [9.4, 8.7, 7.4, 9.2], "datasetMeanDelay": 14.7, "meanDelay": 8.7, "onTimeRate": 0.182, "orders": 488, "p90Delay": 16, "supplier": "Supplier B"}, {"byQuarter": [14.1, 15.0, 15.4, 14.3], "datasetMeanDelay": 14.7, "meanDelay": 14.7, "onTimeRate": 0.141, "orders": 532, "p90Delay": 26, "supplier": "Supplier C"}, {"byQuarter": [14.1, 15.2, 15.1, 19.0], "datasetMeanDelay": 14.5, "meanDelay": 15.9, "onTimeRate": 0.128, "orders": 476, "p90Delay": 28, "supplier": "Supplier D"}, {"byQuarter": [14.3, 14.4, 13.2, 15.6], "datasetMeanDelay": 14.6, "meanDelay": 14.4, "onTimeRate": 0.149, "orders": 417, "p90Delay": 27, "supplier": "Supplier E"}]}, "type": "tool_result"}
+{"text": "| Supplier | Average ", "type": "text"}
+{"text": "days late | Worst 10% | ", "type": "text"}
+{"text": "By quarter | Market ", "type": "text"}
+{"text": "average |\n", "type": "text"}
+{"text": "|---|---|---|---|---|\n| ", "type": "text"}
+{"text": "Supplier A | 15.1 | 27 | ", "type": "text"}
+{"text": "14.9 / 16.2 / 13.9 / ", "type": "text"}
+{"text": "15.6 | 14.8 |\n| Supplier ", "type": "text"}
+{"text": "B | 8.7 | 16 | 9.4 / 8.7 ", "type": "text"}
+{"text": "/ 7.4 / 9.2 | 14.7 |\n| ", "type": "text"}
+{"text": "Supplier C | 14.7 | 26 | ", "type": "text"}
+{"text": "14.1 / 15.0 / 15.4 / ", "type": "text"}
+{"text": "14.3 | 14.7 |\n| Supplier ", "type": "text"}
+{"text": "D | 15.9 | 28 | 14.1 / ", "type": "text"}
+{"text": "15.2 / 15.1 / 19.0 | ", "type": "text"}
+{"text": "14.5 |\n| Supplier E | ", "type": "text"}
+{"text": "14.4 | 27 | 14.3 / 14.4 ", "type": "text"}
+{"text": "/ 13.2 / 15.6 | 14.6 |\n\n", "type": "text"}
+{"text": "24 open supply orders ", "type": "text"}
+{"text": "will probably arrive ", "type": "text"}
+{"text": "after their part runs ", "type": "text"}
+{"text": "out.\n\nSupply order 2444 ", "type": "text"}
+{"text": "(FAX-500, Supplier D) ", "type": "text"}
+{"text": "should arrive ", "type": "text"}
+{"text": "2026-10-11, and the part ", "type": "text"}
+{"text": "runs out 2026-09-17. ", "type": "text"}
+{"text": "Late-risk 100.0%.\nSupply ", "type": "text"}
+{"text": "order 2459 (TRN-300, ", "type": "text"}
+{"text": "Supplier B) should ", "type": "text"}
+{"text": "arrive 2026-10-24, and ", "type": "text"}
+{"text": "the part runs out ", "type": "text"}
+{"text": "2026-10-09. Late-risk ", "type": "text"}
+{"text": "100.0%.\nSupply order ", "type": "text"}
+{"text": "2453 (FAX-100, Supplier ", "type": "text"}
+{"text": "D) should arrive ", "type": "text"}
+{"text": "2026-11-01, and the part ", "type": "text"}
+{"text": "runs out 2026-10-04. ", "type": "text"}
+{"text": "Late-risk 100.0%.\nSupply ", "type": "text"}
+{"text": "order 2458 (ENG-300, ", "type": "text"}
+{"text": "Supplier A) should ", "type": "text"}
+{"text": "arrive 2026-10-31, and ", "type": "text"}
+{"text": "the part runs out ", "type": "text"}
+{"text": "2026-09-29. Late-risk ", "type": "text"}
+{"text": "100.0%.\nSupply order ", "type": "text"}
+{"text": "2457 (CAB-200, Supplier ", "type": "text"}
+{"text": "C) should arrive ", "type": "text"}
+{"text": "2026-11-01, and the part ", "type": "text"}
+{"text": "runs out 2026-10-15. ", "type": "text"}
+{"text": "Late-risk 100.0%.", "type": "text"}
+{"type": "done"}
