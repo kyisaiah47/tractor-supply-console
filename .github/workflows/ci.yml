@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  backend:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -21,7 +21,27 @@ jobs:
           --health-interval 2s --health-timeout 3s --health-retries 30
     env:
       DATABASE_URL: postgres://supply:supply@localhost:5433/supply
+      # No paid model is ever called in CI: the assistant and the brief run offline.
       LLM_PROVIDER: offline
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff check supply tests evals
+      - run: uv run ruff format --check supply tests evals
+      - run: uv run mypy supply tests evals
+      # The tests generate and seed their own database at a fixed planning date.
+      - run: uv run pytest -q
+      # The full setup at today's date, as `npm run db:setup` runs it locally.
+      - run: uv run supply setup
+
+  web:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,6 +51,4 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm run db:setup
-      - run: npm test
       - run: npm run build

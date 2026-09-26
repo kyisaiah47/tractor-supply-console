@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import NumberFlow from "@number-flow/react";
 import { CaretRight, CaretDown, ShoppingCart, Warning, Package, X } from "@phosphor-icons/react";
 import { Modal } from "./ui/Modal";
-import type { listOrders } from "@/lib/queries";
+import type { OrdersData } from "@/lib/types";
 import { STAGE_LABEL, dayShort, n0, usd } from "@/lib/format";
+import { newIdempotencyKey } from "@/lib/idempotency";
 
-type Data = Awaited<ReturnType<typeof listOrders>>;
+type Data = OrdersData;
 type Filters = { tab: "pipeline" | "backlog"; months: number; model?: string; warehouse?: string; parts?: "covered" | "short" };
 type PlanLine = { sku: string; quantity: number; warehouse?: string; supplier?: string; unitPrice: number | null; note?: string; forOrders: number[] };
 type Plan = { lines: PlanLine[]; covered: number; requested: number };
@@ -28,6 +29,8 @@ export function OrdersConsole({ initial }: { initial: Data }) {
   const [placing, setPlacing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const first = useRef(true);
+  // One key per review: confirming twice, or retrying after an error, cannot queue the parts twice.
+  const orderKey = useRef<string>("");
   const router = useRouter();
 
   const load = useCallback(async (next: Filters) => {
@@ -76,6 +79,7 @@ export function OrdersConsole({ initial }: { initial: Data }) {
   const selectedShort = data.rows.filter((r) => sel.has(r.id) && r.parts === "short").length;
 
   async function previewOrder() {
+    orderKey.current = newIdempotencyKey();
     setPlan(null);
     setReviewOpen(true);
     setPlanning(true);
@@ -92,7 +96,7 @@ export function OrdersConsole({ initial }: { initial: Data }) {
     setPlacing(true);
     const res = await fetch("/api/supply-orders", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "Idempotency-Key": orderKey.current },
       body: JSON.stringify({ customerOrderIds: [...sel], dryRun: false }),
     });
     const body = await res.json();

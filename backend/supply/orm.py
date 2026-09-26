@@ -1,5 +1,8 @@
 """ORM classes for the write path: customer orders, supply orders, their jobs, and the
-records that make writes idempotent. The analytic reads use plain SQL (supply/db.py)."""
+records that make writes idempotent. The analytic reads use plain SQL (supply/db.py).
+
+Foreign keys to tables outside the ORM (parts, warehouses, suppliers) are enforced by the
+schema in the Alembic migrations, not declared here."""
 
 from datetime import date, datetime
 from typing import Any
@@ -17,7 +20,7 @@ class Customer(Base):
     __tablename__ = "customers"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(Text)
-    state: Mapped[str] = mapped_column(Text, ForeignKey("warehouses.code"))
+    state: Mapped[str] = mapped_column(Text)
     segment: Mapped[str] = mapped_column(Text)
     since: Mapped[date]
 
@@ -39,7 +42,7 @@ class CustomerOrder(Base):
 class SupplyOrder(Base):
     __tablename__ = "supply_orders"
     id: Mapped[int] = mapped_column(primary_key=True)
-    sku: Mapped[str] = mapped_column(Text, ForeignKey("parts.sku"))
+    sku: Mapped[str] = mapped_column(Text)
     supplier: Mapped[str | None] = mapped_column(Text)
     warehouse: Mapped[str] = mapped_column(Text)
     quantity: Mapped[int]
@@ -79,7 +82,7 @@ class IdempotencyKey(Base):
     route: Mapped[str] = mapped_column(Text)
     request_hash: Mapped[str] = mapped_column(Text)
     status_code: Mapped[int]
-    response: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    response: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
@@ -89,7 +92,7 @@ class MockSupplierOrder(Base):
     supplier: Mapped[str] = mapped_column(Text)
     sku: Mapped[str] = mapped_column(Text)
     quantity: Mapped[int]
-    response: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    response: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChatCircleText, Minus, PaperPlaneRight, CheckCircle, WarningCircle, ArrowCounterClockwise, CircleNotch } from "@phosphor-icons/react";
 import { Markdown } from "./Markdown";
 import { usd } from "@/lib/format";
+import { newIdempotencyKey } from "@/lib/idempotency";
 
 type Proposal = {
   proposal: true;
@@ -15,7 +16,7 @@ type Proposal = {
 type Part =
   | { kind: "text"; text: string }
   | { kind: "tool"; id: string; name: string; input: unknown; ok?: boolean; result?: unknown }
-  | { kind: "proposal"; id: string; data: Proposal; state: "open" | "placing" | "placed" | "dismissed"; created?: number };
+  | { kind: "proposal"; id: string; key: string; data: Proposal; state: "open" | "placing" | "placed" | "dismissed"; created?: number };
 type Msg = { role: "user" | "assistant"; parts: Part[]; error?: string };
 
 const SUGGESTIONS = [
@@ -97,7 +98,8 @@ export function ChatDock(props: { minimized: boolean; onToggle: () => void }) {
             update((m) => {
               const parts: Part[] = m.parts.map((p) => (p.kind === "tool" && p.id === ev.id ? { ...p, ok: ev.ok, result: ev.result } : p));
               if (ev.name === "propose_supply_order" && ev.ok && (ev.result as Proposal)?.proposal) {
-                parts.push({ kind: "proposal", id: ev.id, data: ev.result as Proposal, state: "open" });
+                // Each draft carries its own idempotency key, so pressing Confirm twice queues it once.
+                parts.push({ kind: "proposal", id: ev.id, key: newIdempotencyKey(), data: ev.result as Proposal, state: "open" });
               }
               return { ...m, parts };
             });
@@ -114,7 +116,7 @@ export function ChatDock(props: { minimized: boolean; onToggle: () => void }) {
     }
   }
 
-  async function confirm(msgIndex: number, id: string, data: Proposal) {
+  async function confirm(msgIndex: number, id: string, key: string, data: Proposal) {
     const set = (state: "placing" | "placed" | "open", created?: number) =>
       setMsgs((all) =>
         all.map((m, i) =>
@@ -124,7 +126,7 @@ export function ChatDock(props: { minimized: boolean; onToggle: () => void }) {
     set("placing");
     const res = await fetch("/api/supply-orders", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "Idempotency-Key": key },
       body: JSON.stringify({
         source: "chatbot",
         lines: data.lines.map((l) => ({ sku: l.sku, quantity: l.quantity, warehouse: l.warehouse, supplier: l.supplier, note: l.note ?? data.reason })),
@@ -253,7 +255,7 @@ export function ChatDock(props: { minimized: boolean; onToggle: () => void }) {
                             <button className="btn small" onClick={() => dismiss(mi, p.id)} disabled={p.state === "placing"}>
                               Dismiss
                             </button>
-                            <button className="btn primary small" onClick={() => confirm(mi, p.id, p.data)} disabled={p.state === "placing"}>
+                            <button className="btn primary small" onClick={() => confirm(mi, p.id, p.key, p.data)} disabled={p.state === "placing"}>
                               {p.state === "placing" ? "Ordering" : "Confirm order"}
                             </button>
                           </span>

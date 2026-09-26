@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { Shell } from "@/components/Shell";
-import { overview } from "@/lib/queries";
+import { api } from "@/lib/api";
+import type { Overview } from "@/lib/types";
 import "./globals.css";
 
 const sans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-sans" });
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const o = await overview();
+  const o = await api<Overview>("/api/overview");
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body>

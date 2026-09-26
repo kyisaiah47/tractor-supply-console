@@ -1,5 +1,5 @@
-import { overview, listOrders } from "@/lib/queries";
-import { latestBrief } from "@/lib/weekly";
+import { api, apiOrNull } from "@/lib/api";
+import type { Brief, OrdersData, Overview } from "@/lib/types";
 import { OrdersConsole } from "@/components/OrdersConsole";
 import { n0, stamp } from "@/lib/format";
 
@@ -17,7 +17,11 @@ function briefSections(body: string) {
 }
 
 export default async function Home() {
-  const [o, brief, initial] = await Promise.all([overview(), latestBrief(), listOrders({ tab: "pipeline", months: 3 })]);
+  const [o, brief, initial] = await Promise.all([
+    api<Overview>("/api/overview"),
+    apiOrNull<Brief>("/api/brief"),
+    api<OrdersData>("/api/orders?tab=pipeline&months=3"),
+  ]);
 
   return (
     <>
@@ -50,7 +54,7 @@ export default async function Home() {
           <summary>
             <span className="label">Weekly brief</span>
             <span className="dim">
-              updated {stamp(brief.generated_at.toISOString())}
+              updated {stamp(brief.generated_at)}
             </span>
           </summary>
           <div className="brief">
