@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { DemandResult } from "@/lib/models/demand";
+import type { DemandResult } from "@/lib/types";
 import { ym } from "@/lib/format";
 
 type PerModel = DemandResult["output"]["perModel"];

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { latestRuns, MODEL_SPECS, type ModelName } from "@/lib/models";
-import { AS_OF } from "@/lib/config";
+import { apiOrNull } from "@/lib/api";
+import type { ModelSpec, ModelsData } from "@/lib/types";
 import { DemandView } from "@/components/models/DemandView";
 import { StrategyView } from "@/components/models/StrategyView";
 import { RunWeeklyButton } from "@/components/models/RunWeeklyButton";
@@ -8,8 +8,7 @@ import { CANDIDATE_LABEL, day, dayShort, n0, pct, stamp } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-function Spec({ name, children }: { name: ModelName; children?: React.ReactNode }) {
-  const s = MODEL_SPECS[name];
+function Spec({ spec: s, children }: { spec: ModelSpec; children?: React.ReactNode }) {
   return (
     <div className="spec">
       <div className="kv">
@@ -45,7 +44,7 @@ const TABS = [
 export default async function ModelsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab: tabParam } = await searchParams;
   const tab = TABS.some((t) => t.key === tabParam) ? tabParam : "demand";
-  const runs = await latestRuns();
+  const runs = await apiOrNull<ModelsData>("/api/models");
   if (!runs) {
     return (
       <div className="empty">
@@ -70,7 +69,7 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
           ))}
         </nav>
         <span className="meta mono dim" style={{ fontSize: 12 }}>
-          updated {stamp(runs.ranAt)}, planning date {day(AS_OF)}
+          updated {stamp(runs.ranAt)}, planning date {day(runs.asOf)}
         </span>
         <span className="toolbar-right">
           <RunWeeklyButton />
@@ -87,7 +86,7 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
           </span>
         </div>
         <div className="model-grid">
-          <Spec name="demand">
+          <Spec spec={runs.specs.demand}>
             <div>Market data check</div>
             <div>
               Monthly market demand correlates {d.metrics.diagnostics.corrDemandVsTrendIndex} with the market trend index and{" "}
@@ -139,7 +138,7 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
           </span>
         </div>
         <div className="model-grid">
-          <Spec name="supplier_delay">
+          <Spec spec={runs.specs.supplier_delay}>
             <div>Accuracy</div>
             <div>
               Checked on {n0(sd.metrics.backtest.test_orders)} supply orders promised in the last year. The forecast misses by {sd.metrics.backtest.model_mae}{" "}
@@ -239,7 +238,7 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
           </span>
         </div>
         <div className="model-grid">
-          <Spec name="component_failure">
+          <Spec spec={runs.specs.component_failure}>
             <div>In the pipeline</div>
             <div>About {n0(cf.output.expectedBrokenInPipeline)} parts in the next three months of builds will break.</div>
           </Spec>
@@ -313,7 +312,7 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
           </span>
         </div>
         <div className="model-grid">
-          <Spec name="inventory_strategy">
+          <Spec spec={runs.specs.inventory_strategy}>
             <div>Holding cost</div>
             <div>
               Holding a part for a year is charged at 20 percent of its price plus the last 12 months of inflation, {inv.metrics.inflation} percent.

@@ -1,12 +1,13 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CaretDown, CaretRight, ShoppingCart } from "@phosphor-icons/react";
-import type { StrategyResult } from "@/lib/models/inventoryStrategy";
+import type { StrategyRow } from "@/lib/types";
 import { n0, pct, usd } from "@/lib/format";
+import { newIdempotencyKey } from "@/lib/idempotency";
 
-type Row = StrategyResult["output"]["rows"][number];
+type Row = StrategyRow;
 
 export function StrategyView({ rows }: { rows: Row[] }) {
   const [action, setAction] = useState<"order" | "ok" | "excess" | "all">("order");
@@ -15,6 +16,8 @@ export function StrategyView({ rows }: { rows: Row[] }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const router = useRouter();
+  // One key per Queue selected action. A retry after an error reuses it; a success starts a new one.
+  const queueKey = useRef(newIdempotencyKey());
   const shown = rows.filter((r) => action === "all" || r.action === action);
   const counts = { order: 0, ok: 0, excess: 0 } as Record<string, number>;
   rows.forEach((r) => counts[r.action]++);
@@ -24,7 +27,7 @@ export function StrategyView({ rows }: { rows: Row[] }) {
     setBusy(true);
     const res = await fetch("/api/supply-orders", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "Idempotency-Key": queueKey.current },
       body: JSON.stringify({
         source: "recommendation",
         lines: selRows.map((r) => ({ sku: r.sku, quantity: r.quantity, supplier: r.supplier, note: r.reason })),
@@ -32,6 +35,7 @@ export function StrategyView({ rows }: { rows: Row[] }) {
     });
     const body = await res.json().catch(() => ({}));
     setBusy(false);
+    if (res.ok) queueKey.current = newIdempotencyKey();
     setMsg(res.ok ? `Queued ${body.created.length} supply orders.` : `Nothing was queued: ${JSON.stringify(body.error)}`);
     setSel(new Set());
     router.refresh();

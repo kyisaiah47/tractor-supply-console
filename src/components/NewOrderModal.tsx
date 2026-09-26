@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PlusCircle } from "@phosphor-icons/react";
 import { TRACTOR_MODELS, WAREHOUSES } from "@/lib/catalog";
 import { day } from "@/lib/format";
 import { addDays } from "@/lib/dates";
+import { newIdempotencyKey } from "@/lib/idempotency";
 import { Modal } from "./ui/Modal";
 import { Select } from "./ui/Select";
 import { Combobox } from "./ui/Combobox";
@@ -25,6 +26,8 @@ export function NewOrderModal(props: { open: boolean; onOpenChange: (v: boolean)
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<number | null>(null);
   const router = useRouter();
+  // One key per order being entered. A retry after an error reuses it; a recorded order starts a new one.
+  const orderKey = useRef(newIdempotencyKey());
 
   useEffect(() => {
     if (!props.open || customers.length) return;
@@ -51,7 +54,7 @@ export function NewOrderModal(props: { open: boolean; onOpenChange: (v: boolean)
     setError(null);
     const res = await fetch("/api/orders", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "Idempotency-Key": orderKey.current },
       body: JSON.stringify({
         customerId: Number(customerId),
         tractorModel: model,
@@ -66,6 +69,7 @@ export function NewOrderModal(props: { open: boolean; onOpenChange: (v: boolean)
       setError(typeof body.error === "string" ? body.error : "Check the fields and try again.");
       return;
     }
+    orderKey.current = newIdempotencyKey();
     setSaved(body.id);
     window.dispatchEvent(new Event("orders-changed"));
     router.refresh();

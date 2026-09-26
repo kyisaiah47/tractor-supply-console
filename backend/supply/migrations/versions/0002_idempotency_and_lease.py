@@ -1,7 +1,7 @@
 """Idempotency keys, the worker lease and one weekly run per week.
 
 - idempotency_keys: one row per client key sent to POST /api/orders or POST /api/supply-orders,
-  written in the same transaction as the orders, holding the response a repeat gets back.
+  written in the same transaction as the orders, holding the exact response text a repeat gets back.
 - supply_jobs: one job per supply order. The worker saves the chosen supplier, the quote and
   the supplier idempotency key on the job before it calls the supplier, and moves the job
   through stage quoted, placing, placed. locked_until is the lease: a running job whose lease
@@ -32,7 +32,7 @@ def upgrade() -> None:
         sa.Column("route", sa.Text, nullable=False),
         sa.Column("request_hash", sa.Text, nullable=False),
         sa.Column("status_code", sa.Integer, nullable=False),
-        sa.Column("response", JSONB, nullable=False),
+        sa.Column("response", sa.Text, nullable=False, comment="the JSON body as sent, replayed byte for byte"),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW),
     )
 
@@ -54,7 +54,7 @@ def upgrade() -> None:
         sa.Column("supplier", sa.Text, sa.ForeignKey("suppliers.code"), nullable=False),
         sa.Column("sku", sa.Text, nullable=False),
         sa.Column("quantity", sa.Integer, nullable=False),
-        sa.Column("response", JSONB, nullable=False),
+        sa.Column("response", sa.Text, nullable=False, comment="the JSON body as sent, replayed byte for byte"),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW),
     )
 
