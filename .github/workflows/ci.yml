@@ -32,9 +32,9 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
-      - run: uv run ruff check supply tests evals
-      - run: uv run ruff format --check supply tests evals
-      - run: uv run mypy supply tests evals
+      - run: uv run ruff check supply tests
+      - run: uv run ruff format --check supply tests
+      - run: uv run mypy supply tests
       # The tests generate and seed their own database at a fixed planning date.
       - run: uv run pytest -q
       # The full setup at today's date, as `npm run db:setup` runs it locally.

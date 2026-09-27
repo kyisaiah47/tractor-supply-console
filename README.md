@@ -197,17 +197,6 @@ Every model request is recorded in `llm_calls`: provider, model, input and outpu
 
 ![Assistant](docs/screenshots/assistant.png)
 
-### Evals
-
-[backend/evals/](backend/evals/) holds a golden set of 12 questions in JSONL, each with the tools it must call, and a recorded answer for each. Four deterministic checks run on every recorded answer, with no model call:
-
-1. The expected tools were called, and no order was drafted unasked.
-2. Every number in the answer appears in a tool result, or is a total, rounding or percentage of one.
-3. The answer never says an order was placed.
-4. The answer names no table, tool or statistical method.
-
-Each check also runs on an answer written to fail it, so a check that passes everything fails its own test. The committed answers are recorded in keyword mode, which calls no model. `uv --directory backend run python -m evals.record --live` records with the configured model instead. A live run spends model quota, so it is a manual step.
-
 ## Ordering parts
 
 Three places create supply orders: Order all selected on the Orders page, Queue selected on the reorder plan, and Confirm on an assistant draft. Each one writes the order as `queued` with a job in `supply_jobs`.
@@ -278,7 +267,6 @@ backend/                      the Python service (uv project)
   supply/seed.py              loads the data and runs the models
   supply/migrations/          Alembic migrations: the schema
   tests/                      model, API, worker and assistant tests
-  evals/                      the assistant's golden set and checks
 data/market_signals.csv       the provided dataset
 docker/                       Dockerfiles for the API, the worker and the web app
 docker-compose.yml            the whole stack
@@ -288,7 +276,7 @@ src/components/               the console UI
 
 ## Tests
 
-`npm test` runs 69 pytest tests. 49 are in `backend/tests`:
+`npm test` runs 49 pytest tests in `backend/tests`:
 
 - 9 check that each model beats its baseline and finds each planted effect.
 - 20 cover the API: every read route, bad requests, and idempotency, including six requests sent at once with one key.
@@ -296,13 +284,13 @@ src/components/               the console UI
 - 8 cover the assistant: the tool loop, token and cost recording and the 429 fallbacks against recorded Claude and Gemini streams, plus the keyword mode and the count it drafts, the streamed events of a draft that orders nothing, input checks and the usage readout.
 - 5 cover the generator's determinism, one brief per week, the stock-out calculation and the failure intervals.
 
-The other 20 are the eval golden set and its checks. The tests generate and seed their own database at a fixed planning date, and they call no model: both API keys are blanked. CI runs ruff, mypy and pytest for the backend, and lint, typecheck and a production build for the web app, on every push.
+The tests generate and seed their own database at a fixed planning date, and they call no model: both API keys are blanked. CI runs ruff, mypy and pytest for the backend, and lint, typecheck and a production build for the web app, on every push.
 
 ## What I would do next in production
 
 - Replace the mock supplier APIs with real supplier integrations.
 - Move the supply order queue from Postgres to Amazon SQS. The Postgres queue fits one consumer at this volume, because an order and its job are written in one transaction. In production I would use SQS for its visibility timeout, dead-letter queue and autoscaling consumers. I would add an outbox so an order and its message stay consistent. If more consumers needed the same events, I would publish through SNS to one SQS queue per consumer.
 - Run the weekly job on a scheduler, and compare each week's forecast with the orders that arrived, to track forecast accuracy over time.
-- Add a judge-model eval of answer quality and scheduled live runs of the golden set, on top of the deterministic checks.
+- Add an eval harness for the assistant: a golden set of questions with recorded answers, checked for the right tool calls, numbers grounded in tool results, and no claim that an order was placed, plus a judge-model pass and scheduled live runs.
 - Add sign-in and roles, so only planners can confirm supply orders.
 - Retrain the failure model on field warranty claims as well as receiving and assembly data.

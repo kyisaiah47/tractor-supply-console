@@ -14,7 +14,7 @@ Event = dict[str, Any]
 
 # The first rule whose keywords appear in the question picks the tool. Order matters: "Which parts
 # from which supplier are failing?" is about failures, and "Which supply orders will arrive late?"
-# is about delays, not reordering. The eval golden set (evals/) checks these choices.
+# is about delays, not reordering.
 INTENTS = [
     ("forecast", r"forecast|demand|booked|how many tractors|next (year|month|quarter)|next (three|3|six|6|twelve|12) months"),
     ("failures", r"fail|broken|defect|quality|break"),
