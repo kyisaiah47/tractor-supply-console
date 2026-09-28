@@ -1,20 +1,12 @@
 # Tractor Supply Console
 
-A working prototype of the supply chain application designed in the Kontakt.io system design interview. It predicts demand, supplier delays and component failures for a tractor manufacturer, recommends what to reorder and from whom, and places supply orders through a queue. A planning assistant answers questions and drafts orders from the same data.
+A working prototype from the Kontakt.io system design interview. It turns a supplied market dataset into a synthetic tractor manufacturer's order book, inventory, production pipeline, and supplier history. Planners can review orders, inspect four forecasts, draft replenishment orders with an assistant, and submit them to an asynchronous supplier queue.
 
-The backend is Python: FastAPI, Pydantic, SQLAlchemy on psycopg 3, Alembic and pytest, with statsmodels, SciPy and scikit-learn for the models. One service owns the database. The UI is React on Next.js.
+[Watch the 85-second demo](https://youtu.be/1B5LB3YdftQ) · [View the interview whiteboard](docs/system-design-whiteboard.pdf)
 
-![Orders console](docs/screenshots/orders.png)
+## Run locally
 
-**Demo video (1 minute 25 seconds):** it walks through the orders pipeline, ordering parts for selected orders, the weekly brief, the planning assistant drafting an order, each model, the supply order queue and recording a new order.
-
-<a href="https://youtu.be/1B5LB3YdftQ"><img src="https://i.ytimg.com/vi/1B5LB3YdftQ/maxresdefault.jpg" alt="Demo video" width="100%"></a>
-
-## Run it locally
-
-### With Docker
-
-You need Docker.
+**Docker (recommended):**
 
 ```bash
 git clone https://github.com/kyisaiah47/tractor-supply-console.git
@@ -22,275 +14,60 @@ cd tractor-supply-console
 docker compose up --build
 ```
 
-Open http://localhost:3000. Compose starts Postgres, a setup step, the API on port 8000, the supply order worker and the web app on port 3000. On an empty database the setup step generates the dataset for today's date, loads it and runs the four models. On a restart it keeps the data.
+Open [http://localhost:3000](http://localhost:3000). Compose starts Postgres, generates and loads the data on an empty database, runs the models, and starts the API, worker, and web app. It retains the database across restarts.
 
-### Without Docker
-
-You need Node 20 or newer, [uv](https://docs.astral.sh/uv/) and Docker for Postgres. uv installs Python 3.13 if it is missing.
+**Host development:** Requires Node 20+, [uv](https://docs.astral.sh/uv/), and Docker for Postgres. uv installs Python 3.13 if needed.
 
 ```bash
 cp .env.example .env
 npm install
 uv --directory backend sync
-npm run db:up        # Postgres 16 in Docker, on port 5433
-npm run db:setup     # generates the dataset, loads it, runs the four models
-npm run dev          # the API on :8000, the supply order worker, and the app on http://localhost:3000
+npm run db:up
+npm run db:setup
+npm run dev
 ```
 
-The planning assistant works without an API key. With no key it answers by keyword from the same tools. For full answers, set one key in `.env`:
+The assistant works without an API key in deterministic keyword mode. For model-backed answers, set `GEMINI_API_KEY` or `ANTHROPIC_API_KEY` in `.env`. `LLM_PROVIDER=offline` forces keyword mode. The same variables can be supplied to Docker Compose through `.env`.
 
-| Provider | Setting | Notes |
-|---|---|---|
-| Google Gemini | `GEMINI_API_KEY` | Free tier at https://aistudio.google.com/apikey. Default model `gemini-flash-latest`. The free tier allows about 20 requests per model per day, and each question takes two or three. On a 429 the app moves to the next model in `GEMINI_FALLBACK_MODELS`. When every model is out, the assistant answers in keyword mode and says so. |
-| Anthropic Claude | `ANTHROPIC_API_KEY` | Default model `claude-opus-5`. |
+## Data and design
 
-`LLM_PROVIDER` forces one of `gemini`, `anthropic` or `offline`.
+`data/market_signals.csv` is the supplied 10,000-row dataset (2020–2023). It has market demand, supplier delays, component failure rates, inventory, and economic indicators, but none of the operational tables in the whiteboard. `backend/supply/generate.py` deterministically creates customers, customer orders, production schedules, parts, supplier orders, and inventory lots from it. Generated CSVs stay in ignored `data/generated/`; `npm run db:setup` rebuilds and loads them. Set `APP_AS_OF=YYYY-MM-DD` to reproduce a particular planning date.
 
-Other commands:
+The supplied data has little useful predictive variation on its own. The generator adds documented seasonal demand and supplier and part effects in `backend/supply/planted.py`. Tests check that the models detect those effects without flagging unrelated parts. The four models use held-out data and simple baselines:
 
-| Command | What it does |
+| Model | Output |
 |---|---|
-| `npm test` | The backend tests (pytest). The tests seed their own database. |
-| `npm run lint`, `npm run typecheck` | ESLint and TypeScript for the web app |
-| `npm run job:weekly` | Runs the weekly job: all four models, then the weekly brief |
-| `npm run api` | Runs the API on its own (`npm run dev` already starts it) |
-| `npm run worker` | Runs the supply order worker on its own (`npm run dev` already starts it) |
-| `npm run data:generate` | Rebuilds `data/generated/` from the provided CSV |
-| `npm run db:seed` | Loads `data/generated/` into Postgres and runs the models, without generating again |
-| `npm run db:down` | Stops the Docker services |
+| Demand | Monthly tractor forecasts and uncertainty ranges |
+| Supplier delay | Expected lateness and risk to open orders |
+| Component failure | Failure rates by part and supplier |
+| Inventory strategy | Reorder timing, quantity, and supplier |
 
-The other backend commands call the `supply` command line in `backend/`. `uv --directory backend run supply --help` lists them.
+The FastAPI service owns Postgres and exposes `/api/*`; Next.js serves the console and forwards API requests. The assistant reads the same data as the screens and can **draft** a supply order, but only a person can confirm it. Confirmed orders enter a Postgres job queue. The worker quotes mock supplier APIs, retries transient failures, and uses idempotency keys so retries do not place duplicate orders.
 
-## From the whiteboard to the code
-
-The design from the interview is in [docs/system-design-whiteboard.pdf](docs/system-design-whiteboard.pdf).
-
-![Whiteboard](docs/system-design-whiteboard.png)
-
-| Whiteboard box | Where it lives |
-|---|---|
-| User story: see all inventory and incoming orders, 12 months back, order 2-3 months ahead, fix things that break | The Orders page and the Models page |
-| Postgres: customer_orders, supply_orders, customers, production_pipeline, inventory_part | The Alembic migrations in [backend/supply/migrations/versions/](backend/supply/migrations/versions/). `inventory_parts` holds received lots with `broken_quantity`, `broken_date` and where the failure was found. |
-| Order form: customer_id, tractor, quantity, id | The New order modal and `POST /api/orders` |
-| Customer order API, GET | `GET /api/orders` |
-| Place supply/parts order API, POST | `POST /api/supply-orders` |
-| Dashboard: 2 tabs, production pipeline vs 12-month backlog, static table, Order all selected | The Orders page. Order all selected opens a review, and nothing is ordered until you confirm. |
-| Chatbot, open by default, minimizable, streaming | The planning assistant panel and `POST /api/chat` |
-| Worker queue for ordered supplies, supplier API, asynchronous, several suppliers | `supply_jobs` in Postgres and [backend/supply/worker.py](backend/supply/worker.py). Mock supplier APIs are under `/api/mock-suppliers/:supplier`, in [backend/supply/mock_suppliers.py](backend/supply/mock_suppliers.py). |
-| Model for supplier delays | [backend/supply/models/supplier_delay.py](backend/supply/models/supplier_delay.py) |
-| Model for demand fluctuations | [backend/supply/models/demand.py](backend/supply/models/demand.py) |
-| Model for component failures | [backend/supply/models/component_failure.py](backend/supply/models/component_failure.py) |
-| Model for cost-effective inventory strategy | [backend/supply/models/inventory_strategy.py](backend/supply/models/inventory_strategy.py) |
-| LLM: chatbot on the same data, weekly job writes a summary on the dashboard | [backend/supply/agent/](backend/supply/agent/) and [backend/supply/weekly.py](backend/supply/weekly.py) |
-
-## The data
-
-### The provided dataset
-
-[data/market_signals.csv](data/market_signals.csv) is the dataset Kontakt.io provided: 10,000 rows from 2020-01-01 to 2023-12-30. Each row has a date, tractor model (TX-100 to TX-500), demand units, supplier (Supplier A to E), supplier delay days, component failure rate, inventory level, warehouse (CA, FL, IL, NY, TX), inflation rate and market trend index.
-
-I measured it before building anything:
-
-- Demand does not correlate with the market trend index (r = 0.001) or with inflation (r = 0.013).
-- Average demand is flat across calendar months, between 269 and 278 units.
-- All five suppliers average between 14.5 and 14.8 days of delay.
-- All five tractor models average a failure rate between 4.9% and 5.1%.
-
-So the dataset on its own has no signal to predict, and a model that claimed a strong result from it would be fitting noise. Every model here is tested against a simple baseline on data it did not see.
-
-### The generated operational data
-
-The whiteboard's tables do not exist in the provided dataset, so [backend/supply/generate.py](backend/supply/generate.py) builds them from it. The generator is seeded, so the same planning date always gives the same data. Its output goes to `data/generated/`.
-
-| Table | Rows | Built from the provided dataset by |
-|---|---|---|
-| customers | 64 | Dealers, fleets and co-ops in the five warehouse states |
-| customer_orders | about 14,500 | 1% of each model's monthly market demand, shaped by a planting-season cycle and 6% yearly growth |
-| production_pipeline | about 720 | Open orders due in the next three months, with build dates |
-| parts, part_suppliers | 50, 125 | Ten parts per model. Each part is made by two or three of the dataset's suppliers. |
-| supply_orders | about 2,450 | Monthly part orders. Each delay is sampled from that supplier's own delays in the dataset. |
-| inventory_parts | about 2,400 | One received lot per supply order. Broken counts come from the dataset's failure rate for that model and month. |
-| inventory | 250 | The dataset's latest inventory level per model and warehouse, scaled to our share |
-
-### The app runs on today's date
-
-The dataset ends in 2023. The generator moves every dataset date forward by the same number of days, so the last row becomes yesterday. Orders before today are history. Orders from today on are the open order book. The CSV is never changed, and `market_signals.source_date` keeps each row's original date. Set `APP_AS_OF=YYYY-MM-DD` and run `npm run db:setup` again to use another day.
-
-### Planted effects
-
-Four effects are written into the generated data on purpose ([backend/supply/planted.py](backend/supply/planted.py)), so the models have real signal to find:
-
-1. Orders peak in March to May for planting, with a smaller September bump.
-2. Supplier B delivers 40% faster than its dataset delays. Supplier D is 40% slower in Q4.
-3. Hydraulic pumps from Supplier E fail 2.5 times as often.
-4. TX-400 transmissions fail 1.8 times as often, from every supplier.
-
-The tests check that the models find all four, and that they do not flag parts that were not planted.
-
-## The four models
-
-Every model is scored on data it did not see, against a simple baseline. The statistics come from libraries: statsmodels for the regressions, SciPy for distributions and quantiles, scikit-learn for the error metrics, and pandas and NumPy for the data. The figures below come from a run with planning date 26 Sep 2026. They change slightly with the planning date.
-
-### 1. Demand fluctuations
-
-- **Predicts:** tractors ordered per model per month for the next 12 months, with a likely range.
-- **Data sources:** customer order history, the market data's demand, trend index and inflation, and the open order book.
-- **Inputs:** tractor model, calendar month, trend over time, market inputs.
-- **Outputs:** forecast per model per month, an 80% range, booked and not yet booked tractors.
-- **Method:** four candidate forecasts are each run a year ahead for each of the last two years. The most accurate one is used. The two regression candidates are statsmodels OLS models: a trend and a month-of-year term, and the same with the market inputs added. Errors are scikit-learn's MAE, MAPE and RMSE. The 80% range is the forecast plus or minus the backtest error times SciPy's normal quantile, widened further ahead.
-
-| Method | Average miss |
-|---|---|
-| Trend, season and market data (used) | 17.4% |
-| Same month last year | 20.8% |
-| Trend and season | 20.9% |
-| Last 12 months' average | 21.1% |
-
-Market inputs for future months are unknown, so the backtest holds them at their trailing 12-month average, the same as the live forecast does.
-
-### 2. Supplier delays
-
-- **Predicts:** how many days late each supplier delivers by quarter, and the chance each open supply order arrives after its part runs out.
-- **Data sources:** promised and delivered dates on past supply orders, the dataset's supplier delays as a baseline, and stock with the production schedule for the date each part runs out.
-- **Method:** a statsmodels OLS regression of days late on supplier, quarter and their interaction. The chance of being late comes from each supplier's real spread of delays, through SciPy's empirical distribution. A mixed model that pulls each quarter toward its supplier's average was also tried. Every supplier and quarter has about 100 or more orders, so pooling barely changed the estimates, and on some planning dates it shrank Supplier D's real Q4 slowdown by a third.
-- **Result:** on 562 supply orders from the last year, the model misses by 7.21 days on average. The overall average misses by 7.55 days, and the dataset's per-supplier average misses by 7.60.
-- It finds Supplier B at 9.1 days late (the dataset says 14.7) and Supplier D at 18.5 days in Q4 (13.0 to 14.7 in other quarters).
-
-### 3. Component failures
-
-- **Predicts:** the failure rate of every part from every supplier, and how many parts in the next three months of builds will break.
-- **Data sources:** received lots with broken counts and where the failure was found, and the dataset's failure rate per model as the starting point.
-- **Method:** each rate starts at the dataset's rate and moves toward the supplier's own record as parts are received: a beta-binomial model with the dataset rate as the prior, computed with SciPy's beta distribution. A part is flagged when even the low end of its exact 90% range is 25% above the dataset rate. Lots received in the last 120 days are left out because they have not had time to fail.
-- **Result:** on 113 part and supplier pairs from the last year, the model misses by 4.51 broken parts per pair. The dataset rate misses by 4.89.
-- It flags all five Supplier E hydraulic pumps (9.6% to 11.1% against about 5%) and the TX-400 transmissions from Supplier B and Supplier C (9.2% and 8.3%). It flags nothing else.
-
-### 4. Cost-effective inventory strategy
-
-- **Predicts:** for every part, whether to order now, how many, and from which supplier.
-- **Data sources:** the other three models, stock on hand and on order, supplier prices and lead times, and the dataset's inflation.
-- **Method:** a reorder-point policy at a 95% service level, with the z value from SciPy's normal distribution. Lead time is the supplier's quoted lead time plus its expected delay, and the delay spread counts as lead-time risk. Quantities are raised to cover expected failures. The supplier is the cheapest after pricing in its failures and delays. Holding cost is 20% of the price per year plus inflation.
-- **Result:** it never picks Supplier E for hydraulic pumps. Every order it recommends brings stock back above the reorder point. On the run above it recommends 16 orders for $45,527,224.
-
-![Models](docs/screenshots/forecasts.png)
-
-## The planning assistant
-
-The assistant is an agent with nine tools. Each tool reads the same model output and tables as the screens, so the assistant and the console always show the same numbers.
-
-| Tool | Reads |
-|---|---|
-| get_overview | Headline counts |
-| list_customer_orders | The Orders table, with part shortfalls |
-| get_demand_forecast | The demand model |
-| get_supplier_delays | The supplier delay model and at-risk supply orders |
-| get_component_failures | The component failure model |
-| get_inventory_recommendations | The reorder plan |
-| query_market_signals | Aggregates over the provided dataset |
-| get_weekly_brief | The latest weekly brief |
-| propose_supply_order | Drafts supply orders. It writes nothing. |
-
-The tools are in [backend/supply/agent/tools.py](backend/supply/agent/tools.py) and the tool loop is in [backend/supply/agent/run.py](backend/supply/agent/run.py).
-
-The assistant can only draft orders. The chat shows the draft with a Confirm button, and nothing is ordered until a person presses it. The answer streams to the browser as newline-delimited JSON events, so the chat shows each tool call as it happens. Claude runs through the Anthropic Python SDK, with server-side fallbacks when a model declines. Gemini runs through the OpenAI Python SDK on Google's OpenAI-compatible endpoint. Both run the same tool loop.
-
-Every model request is recorded in `llm_calls`: provider, model, input and output tokens, latency, tool rounds, the provider's request id and the cost. The Models page shows the totals, and `GET /api/llm-calls` returns them.
-
-![Assistant](docs/screenshots/assistant.png)
-
-## Ordering parts
-
-Three places create supply orders: Order all selected on the Orders page, Queue selected on the reorder plan, and Confirm on an assistant draft. Each one writes the order as `queued` with a job in `supply_jobs`.
-
-The worker claims jobs with `FOR UPDATE SKIP LOCKED`, so several workers can run at once. For each job it gets a quote from every supplier that makes the part, scores the quotes on price adjusted for that supplier's failure rate and expected delay, and places the order with the lowest. When a person confirmed a supplier, on the reorder plan or an assistant draft, the worker uses that supplier if it quotes and can fill the order, and logs the reason if it cannot. Reorder plan orders are company-wide, so they are received at the Peoria, IL warehouse. It records every step in the job's log. About 1 in 12 mock supplier calls returns a 503, and the worker retries with exponential backoff. After five tries in all, the job is `failed` with the error recorded.
-
-Every step can be repeated safely:
-
-- **Your request.** Each action in the UI sends an `Idempotency-Key` header with `POST /api/orders` and `POST /api/supply-orders`. The key is stored with the response, in the same transaction as the orders. A repeat returns the same response and writes nothing.
-- **The supplier call.** Before calling a supplier, the worker saves the chosen supplier and the key `supply-order-<id>` on the job. The supplier stores the key with its result and returns the stored result on a repeat. A retry reuses the saved supplier and skips quoting, so it cannot order from a different supplier.
-- **A worker that dies.** A claimed job holds a 47-second lease, longer than the worker's HTTP timeouts added together. If the worker stops, the next worker takes the job back when the lease runs out and finishes it. The supplier sees the same key and records one order.
-- **The weekly job.** It keeps one set of model runs and one brief per planning week, and a second run that week updates them.
-
-![Review supply order](docs/screenshots/review-supply-order.png)
-
-![Supply orders](docs/screenshots/supply-orders.png)
-
-## API
-
-The API is FastAPI in [backend/supply/api.py](backend/supply/api.py). Next.js forwards every `/api/*` request to it, so the paths work on port 3000 and on port 8000. All bodies are JSON and validated with Pydantic. A bad request returns 400 with the issues. With the stack running, FastAPI serves the OpenAPI definitions at http://localhost:8000/docs.
-
-| Method | Path | What it does |
-|---|---|---|
-| GET | `/api/orders` | Customer orders with part allocation and filter counts. Query params: tab (pipeline or backlog), months, model, warehouse, parts (covered or short), limit, offset. |
-| POST | `/api/orders` | Records a customer order: `customerId, tractorModel, quantity, requestedDate`, optional `warehouse`. Takes an `Idempotency-Key` header. |
-| GET | `/api/customers` | Customers for the order form |
-| POST | `/api/supply-orders` | Queues supply order lines, or covers the part shortfalls of a set of customer orders. See the curl examples below for both request shapes. Takes an `Idempotency-Key` header. |
-| GET | `/api/supply-orders` | Supply orders with their job and log. Query params: status (queued, placed, fulfilled or failed), source (`app` leaves out the generated history), limit. |
-| GET | `/api/supply-orders/summary` | Counts for the supply orders page |
-| POST | `/api/chat` | The assistant. Streams `meta, text, tool_call, tool_result, done` and `error` events. |
-| GET | `/api/models` | The latest output of all four models, with their sources, inputs and outputs |
-| GET | `/api/models/:name` | One model: `demand, supplier_delay, component_failure or inventory_strategy` |
-| POST | `/api/jobs/weekly` | Runs the weekly job |
-| GET | `/api/brief` | The latest weekly brief |
-| GET | `/api/overview` | Headline counts |
-| GET | `/api/queue` | Worker heartbeats and recent jobs |
-| GET | `/api/llm-calls` | Language model use: calls, tokens, latency and cost |
-| GET | `/api/health` | 200 when the API and the database are up |
-| GET | `/api/mock-suppliers/:supplier/quote` | A supplier's price, stock and lead time. Query params: sku, qty. |
-| POST | `/api/mock-suppliers/:supplier/orders` | Places an order with a supplier. Takes an `Idempotency-Key` header. |
-
-Examples:
+## Verify
 
 ```bash
-curl 'localhost:3000/api/orders?tab=pipeline&months=1&parts=short&limit=2'
-
-curl -X POST localhost:3000/api/supply-orders -H 'content-type: application/json' \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -d '{"lines":[{"sku":"HYD-400","quantity":120}]}'
-
-curl -X POST localhost:3000/api/supply-orders -H 'content-type: application/json' \
-  -d '{"customerOrderIds":[12539,12550],"dryRun":true}'
-
-curl -N -X POST localhost:3000/api/chat -H 'content-type: application/json' \
-  -d '{"messages":[{"role":"user","content":"Which supplier is slowest in Q4?"}]}'
+npm test
+npm run lint
+npm run typecheck
+npm run build
+uv --directory backend run ruff check supply tests
+uv --directory backend run ruff format --check supply tests
+uv --directory backend run mypy supply tests
 ```
 
-## Project layout
+`npm test` runs the backend tests against a local Postgres instance (`npm run db:up` first). CI runs these checks and a fresh data setup on every push. With the app running, the API schema is at [http://localhost:8000/docs](http://localhost:8000/docs).
 
-```
-backend/                      the Python service (uv project)
-  supply/api.py               the HTTP API
-  supply/models/              the four models
-  supply/agent/               the assistant: tools, tool loop, offline mode
-  supply/worker.py            the supply order worker
-  supply/allocation.py        allocates stock and inbound supply to open orders
-  supply/generate.py          builds the operational dataset from the provided CSV
-  supply/seed.py              loads the data and runs the models
-  supply/migrations/          Alembic migrations: the schema
-  tests/                      model, API, worker and assistant tests
-data/market_signals.csv       the provided dataset
-docker/                       Dockerfiles for the API, the worker and the web app
-docker-compose.yml            the whole stack
-src/app/                      pages (Next.js 16 App Router)
-src/components/               the console UI
-```
+## Code map
 
-## Tests
+| Path | Purpose |
+|---|---|
+| `backend/supply/generate.py`, `seed.py` | Synthetic dataset and database setup |
+| `backend/supply/models/` | Four forecasting and planning models |
+| `backend/supply/agent/` | Assistant tools, model loop, offline mode |
+| `backend/supply/worker.py`, `mock_suppliers.py` | Supplier order processing |
+| `backend/supply/api.py` | HTTP API |
+| `backend/tests/` | API, model, worker, and assistant tests |
+| `src/` | Next.js console |
 
-`npm test` runs 49 pytest tests in `backend/tests`:
-
-- 9 check that each model beats its baseline and finds each planted effect.
-- 20 cover the API: every read route, bad requests, and idempotency, including six requests sent at once with one key.
-- 7 cover the worker: the saved supplier, a supplier the person confirmed, one supplier order when a job runs twice, a worker killed after the supplier accepted, the fencing of a stale lease, and the dead-letter state.
-- 8 cover the assistant: the tool loop, token and cost recording and the 429 fallbacks against recorded Claude and Gemini streams, plus the keyword mode and the count it drafts, the streamed events of a draft that orders nothing, input checks and the usage readout.
-- 5 cover the generator's determinism, one brief per week, the stock-out calculation and the failure intervals.
-
-The tests generate and seed their own database at a fixed planning date, and they call no model: both API keys are blanked. CI runs ruff, mypy and pytest for the backend, and lint, typecheck and a production build for the web app, on every push.
-
-## What I would do next in production
-
-- Replace the mock supplier APIs with real supplier integrations.
-- Move the supply order queue from Postgres to Amazon SQS. The Postgres queue fits one consumer at this volume, because an order and its job are written in one transaction. In production I would use SQS for its visibility timeout, dead-letter queue and autoscaling consumers. I would add an outbox so an order and its message stay consistent. If more consumers needed the same events, I would publish through SNS to one SQS queue per consumer.
-- Run the weekly job on a scheduler, and compare each week's forecast with the orders that arrived, to track forecast accuracy over time.
-- Add an eval harness for the assistant: a golden set of questions with recorded answers, checked for the right tool calls, numbers grounded in tool results, and no claim that an order was placed, plus a judge-model pass and scheduled live runs.
-- Add sign-in and roles, so only planners can confirm supply orders.
-- Retrain the failure model on field warranty claims as well as receiving and assembly data.
+This is a local prototype: suppliers are simulated, there is no user authentication, and the weekly model refresh runs on demand rather than from a production scheduler.
