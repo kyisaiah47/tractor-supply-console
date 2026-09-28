@@ -50,7 +50,7 @@ Other commands:
 
 | Command | What it does |
 |---|---|
-| `npm test` | The backend tests and the eval golden set (pytest). The tests seed their own database. |
+| `npm test` | The backend tests (pytest). The tests seed their own database. |
 | `npm run lint`, `npm run typecheck` | ESLint and TypeScript for the web app |
 | `npm run job:weekly` | Runs the weekly job: all four models, then the weekly brief |
 | `npm run api` | Runs the API on its own (`npm run dev` already starts it) |

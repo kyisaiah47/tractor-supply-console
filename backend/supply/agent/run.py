@@ -40,7 +40,7 @@ How to answer:
 - Get every number from a tool. Never estimate or invent a figure. If no tool has it, say so.
 - The reader is a supply planner, not a developer. Never name a database table, a field, a tool or function, an API or a statistical method. Say "the demand forecast", "the supplier delay forecast", "market data", "order history".
 - Keep answers short: one fact per sentence, plain words. Use a small markdown table when comparing more than three rows.
-- Call each tool once with the widest filter you need. get_supplier_delays with no supplier returns every supplier at once.
+- Call each tool once with the widest filter you need. get_supplier_delays with no supplier returns every supplier at once. Never call the same tool with the same arguments twice.
 - When the user asks you to draft, order, buy or reorder anything, call propose_supply_order in the same turn with the quantities and suppliers from get_inventory_recommendations. It only drafts: the user must press Confirm. Never say an order was placed.
 - Market data on its own predicts little: market demand does not move with the trend index or inflation, and every supplier averages about the same delay there. The forecasts rely on the company's own order and supply history. Say this if asked why a forecast uses one input and not another."""
 
@@ -79,13 +79,24 @@ def run_agent(history: list[dict], offline_pause: float = 0.012) -> Iterator[Eve
             rec.save()
 
 
-def _run_tool(name: str, call_id: str, tool_input: Any) -> tuple[list[Event], bool, Any]:
-    ok, result = execute_tool(name, tool_input)
+def _run_tool(
+    name: str, call_id: str, tool_input: Any, seen: dict[tuple[str, str], tuple[bool, Any]]
+) -> tuple[list[Event], bool, Any, bool]:
+    """Runs a tool, or replays the result if this exact call already happened this turn.
+
+    Returns whether this was a fresh call, so the caller can tell a round of pure repeats
+    from a round that made real progress.
+    """
+    sig = (name, json.dumps(tool_input, sort_keys=True, default=str))
+    fresh = sig not in seen
+    if fresh:
+        seen[sig] = execute_tool(name, tool_input)
+    ok, result = seen[sig]
     events = [
         {"type": "tool_call", "id": call_id, "name": name, "input": tool_input},
         {"type": "tool_result", "id": call_id, "name": name, "ok": ok, "result": result},
     ]
-    return events, ok, result
+    return events, ok, result, fresh
 
 
 def run_anthropic(history: list[dict], model: str, rec: CallRecord) -> Iterator[Event]:
@@ -94,8 +105,10 @@ def run_anthropic(history: list[dict], model: str, rec: CallRecord) -> Iterator[
         {"name": t.name, "description": t.description, "input_schema": t.json_schema, "eager_input_streaming": True} for t in TOOLS
     ]
     messages: list[Any] = [{"role": h["role"], "content": h["content"]} for h in history]
+    seen: dict[tuple[str, str], tuple[bool, Any]] = {}
+    force_final = False
     for rnd in range(MAX_ROUNDS):
-        extra: dict[str, Any] = {"tool_choice": {"type": "none"}} if rnd == MAX_ROUNDS - 1 else {}
+        extra: dict[str, Any] = {"tool_choice": {"type": "none"}} if rnd == MAX_ROUNDS - 1 or force_final else {}
         with client.beta.messages.stream(
             model=model,
             max_tokens=16000,
@@ -122,8 +135,10 @@ def run_anthropic(history: list[dict], model: str, rec: CallRecord) -> Iterator[
         rec.tool_rounds += 1
         messages.append({"role": "assistant", "content": [b.model_dump(exclude_none=True) for b in msg.content]})
         results = []
+        force_final = True
         for u in uses:
-            events, ok, result = _run_tool(u.name, u.id, u.input)
+            events, ok, result, fresh = _run_tool(u.name, u.id, u.input, seen)
+            force_final = force_final and not fresh
             yield from events
             results.append({"type": "tool_result", "tool_use_id": u.id, "content": json.dumps(result, default=str), "is_error": not ok})
         messages.append({"role": "user", "content": results})
@@ -137,8 +152,10 @@ def run_gemini(history: list[dict], rec: CallRecord) -> Iterator[Event]:
         {"type": "function", "function": {"name": t.name, "description": t.description, "parameters": t.json_schema}} for t in TOOLS
     ]
     messages: list[Any] = [{"role": "system", "content": system_prompt()}, *({"role": h["role"], "content": h["content"]} for h in history)]
+    seen: dict[tuple[str, str], tuple[bool, Any]] = {}
+    force_final = False
     for rnd in range(MAX_ROUNDS):
-        extra: dict[str, Any] = {"tool_choice": "none"} if rnd == MAX_ROUNDS - 1 else {}
+        extra: dict[str, Any] = {"tool_choice": "none"} if rnd == MAX_ROUNDS - 1 or force_final else {}
         while True:
             try:
                 stream = client.chat.completions.create(
@@ -193,11 +210,13 @@ def run_gemini(history: list[dict], rec: CallRecord) -> Iterator[Event]:
                 ],
             }
         )
+        force_final = True
         for c in real:
             try:
                 tool_input = json.loads(c["args"] or "{}")
             except ValueError:
                 tool_input = {}
-            events, _ok, result = _run_tool(c["name"], c["id"], tool_input)
+            events, _ok, result, fresh = _run_tool(c["name"], c["id"], tool_input, seen)
+            force_final = force_final and not fresh
             yield from events
             messages.append({"role": "tool", "tool_call_id": c["id"], "content": json.dumps(result, default=str)})
